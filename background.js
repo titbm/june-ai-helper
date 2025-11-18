@@ -110,9 +110,7 @@ let isAutomating = false;
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install' || details.reason === 'update') {
     await chrome.storage.local.clear();
-    console.log('Storage cleared on', details.reason);
   }
-  // Загружаем состояние
   await loadState();
 });
 
@@ -145,7 +143,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 // Слушаем обновление URL вкладки
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener((_, changeInfo, tab) => {
   if (changeInfo.url && tab.active) {
     notifySidepanel(tab);
   }
@@ -175,9 +173,7 @@ async function stopTypingInTab() {
   if (currentAutomationTabId) {
     try {
       await chrome.tabs.sendMessage(currentAutomationTabId, { type: 'STOP_TYPING' });
-    } catch (error) {
-      console.error('Error stopping typing:', error);
-    }
+    } catch {}
   }
 }
 
@@ -222,27 +218,19 @@ async function checkActiveTab() {
 }
 
 async function handleSendToJune(query) {
-  console.log('handleSendToJune:', query);
-  
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  console.log('Active tab:', tab?.id, tab?.url);
   
   if (!tab || !tab.url || !tab.url.includes('askjune.ai')) {
-    console.log('Not June AI tab');
     chrome.runtime.sendMessage({ type: 'ERROR', message: 'Активная вкладка не June AI' });
     return;
   }
   
-  console.log('Sending message to tab:', tab.id);
-  
   try {
-    const response = await chrome.tabs.sendMessage(tab.id, {
+    await chrome.tabs.sendMessage(tab.id, {
       type: 'INSERT_AND_SUBMIT',
       text: query
     });
-    console.log('Response from content script:', response);
   } catch (error) {
-    console.error('Error sending message:', error);
     chrome.runtime.sendMessage({ type: 'ERROR', message: 'Ошибка отправки: ' + error.message });
   }
 }
@@ -300,9 +288,12 @@ async function generateQueriesWithAI(theme) {
           }]
         })
       });
-
+      
       if (response.ok) {
         const data = await response.json();
+        
+        if (!data.choices?.[0]?.message) continue;
+        
         const text = data.choices[0].message.content;
         const questions = text.split('\n')
           .map(q => q.trim())
@@ -314,7 +305,7 @@ async function generateQueriesWithAI(theme) {
         }
       }
     } catch (error) {
-      console.log(`Модель ${model} не сработала:`, error);
+      console.error(`Model ${model} failed:`, error);
     }
   }
   
@@ -378,9 +369,7 @@ async function handleAutomate() {
   try {
     await chrome.tabs.sendMessage(automationTabId, { type: 'CLICK_NEW_CHAT' });
     await new Promise(resolve => setTimeout(resolve, 1000));
-  } catch (error) {
-    console.error('Error creating new chat:', error);
-  }
+  } catch {}
 
   // Отправляем запросы
   for (let i = 0; i < currentQueries.length; i++) {
@@ -422,9 +411,7 @@ async function handleAutomate() {
         }
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-    } catch (error) {
-      console.error('Error sending query:', error);
-    }
+    } catch {}
   }
 
   notifySidepanel(null, { type: 'COMPLETE' });
