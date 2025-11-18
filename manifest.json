@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Автоматическая отправка запросов в June AI",
   "permissions": ["sidePanel", "storage"],
-  "host_permissions": ["https://askjune.ai/*", "https://*.workers.dev/*"],
+  "host_permissions": ["https://askjune.ai/*", "https://*.vercel.app/*"],
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

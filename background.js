@@ -1,11 +1,5 @@
 // API Configuration
-const API_URL = 'https://juneai-helper-api.juneai.workers.dev';
-const FREE_MODELS = [
-  'google/gemma-3-27b-it:free',
-  'google/gemini-2.0-flash-exp:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'deepseek/deepseek-chat-v3-0324:free'
-];
+const API_URL = 'https://june-ai-helper.vercel.app/api/generate';
 
 // Темы для случайной генерации
 const RANDOM_THEMES = [
@@ -263,53 +257,73 @@ function getRandomTheme() {
   return RANDOM_THEMES[Math.floor(Math.random() * RANDOM_THEMES.length)];
 }
 
-// Генерация через OpenRouter
+// Генерация через Gemini API
 async function generateQueriesWithAI(theme) {
   notifySidepanel(null, { type: 'GENERATING' });
   
   const isEnglish = /^[a-zA-Z\s]+$/.test(theme);
   
   const prompt = isEnglish 
-    ? `Generate exactly 10 casual, natural questions about "${theme}" that a regular person would type quickly in a chat. Make them sound like genuine curiosity, not formal interview questions. Each question should flow naturally from the previous one. Use simple, everyday language. Mix capital and lowercase starts - some questions start with capital letter, some with lowercase, to make it feel more human and spontaneous. Add occasional typos or missing punctuation. Start with basic "what is" or "how does" questions, then get more specific and personal. One question per line, no numbering.`
-    : `Сгенерируй ровно 10 простых, естественных вопросов на тему "${theme}", которые обычный человек быстро набрал бы в чате. Пусть они звучат как искреннее любопытство, а не формальные вопросы интервью. Каждый вопрос должен естественно вытекать из предыдущего. Используй простой, повседневный язык. Чередуй заглавные и строчные буквы в начале - некоторые вопросы начинай с заглавной буквы, некоторые со строчной, чтобы выглядело более по-человечески и спонтанно. Добавь иногда опечатки или пропущенные знаки препинания. Начни с базовых вопросов типа "что такое" или "как работает", потом переходи к более конкретным и личным. Каждый вопрос с новой строки, без нумерации.`;
+    ? `Generate exactly 10 diverse, casual questions about "${theme}" that a curious person would ask. Make them VERY DIFFERENT from each other:
+- Mix question types: "what", "how", "why", "when", "where", "who", "can", "should", "is it true"
+- Vary the style: some basic, some specific, some practical, some philosophical, some controversial
+- Include personal angle: "how do I", "what if I", "should I"
+- Add comparisons: "vs", "better than", "difference between"
+- Mix tones: curious, skeptical, practical, worried, excited
+- Some questions start lowercase, some uppercase (natural typing)
+- Occasional typo or missing punctuation
+One question per line, no numbering.`
+    : `Сгенерируй ровно 10 РАЗНООБРАЗНЫХ вопросов про "${theme}", которые любопытный человек задал бы в чате. Сделай их ОЧЕНЬ РАЗНЫМИ:
+- Разные типы: "что", "как", "почему", "зачем", "когда", "где", "можно ли", "правда ли", "стоит ли"
+- Разный стиль: базовые, конкретные, практические, философские, спорные
+- Личный угол: "как мне", "что если я", "стоит ли мне"
+- Сравнения: "или", "лучше чем", "разница между", "vs"
+- Разные тона: любопытство, скептицизм, практичность, беспокойство, восторг
+- Часть вопросов с маленькой буквы, часть с большой (естественный набор)
+- Иногда опечатки или без знаков препинания
+Каждый вопрос с новой строки, без нумерации.`;
   
-  for (const model of FREE_MODELS) {
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [{
-            role: 'user',
-            content: prompt
-          }]
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (!data.choices?.[0]?.message) continue;
-        
-        const text = data.choices[0].message.content;
-        const questions = text.split('\n')
-          .map(q => q.trim())
-          .filter(q => q.length > 10 && !q.match(/^\d+[\.\)]/))
-          .slice(0, 10);
-        
-        if (questions.length >= 8) {
-          return questions;
-        }
-      }
-    } catch (error) {
-      console.error(`Model ${model} failed:`, error);
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messages: [{
+          role: 'user',
+          content: prompt
+        }]
+      })
+    });
+    
+    if (!response.ok) {
+      console.error('API error:', response.status);
+      return null;
     }
+    
+    const data = await response.json();
+    
+    if (!data.choices?.[0]?.message) {
+      console.error('Invalid response format');
+      return null;
+    }
+    
+    const text = data.choices[0].message.content;
+    const questions = text.split('\n')
+      .map(q => q.trim())
+      .filter(q => q.length > 10 && !q.match(/^\d+[\.\)]/))
+      .slice(0, 10);
+    
+    if (questions.length >= 8) {
+      return questions;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('API request failed:', error);
+    return null;
   }
-  
-  return null;
 }
 
 // Генерация запросов

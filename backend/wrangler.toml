@@ -1,6 +1,0 @@
-name = "juneai-helper-api"
-main = "worker.js"
-compatibility_date = "2024-01-01"
-
-# Переменные окружения (добавь через Cloudflare Dashboard)
-# OPENROUTER_API_KEY = "твой-ключ"
