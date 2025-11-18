@@ -27,7 +27,9 @@ async function loadState() {
       themeHeader.textContent = `Тема: ${currentTheme}`;
     }
     
-    updateLockButton();
+    if (lockBtn) {
+      updateLockButton();
+    }
     renderQueries();
   }
 }
@@ -281,7 +283,9 @@ chrome.runtime.onMessage.addListener((message) => {
     currentQueries = message.queries;
     currentTheme = message.theme;
     themeHeader.textContent = `Тема: ${currentTheme}`;
-    updateLockButton();
+    if (lockBtn) {
+      updateLockButton();
+    }
     renderQueries();
     checkJuneTab();
   } else if (message.type === 'GENERATING') {
@@ -314,6 +318,9 @@ async function init() {
     if (currentTheme) {
       themeHeader.textContent = `Тема: ${currentTheme}`;
     }
+    
+    // Обновляем кнопку замка после загрузки состояния
+    updateLockButton();
   }
   
   // Если список запросов пуст, генерируем автоматически
