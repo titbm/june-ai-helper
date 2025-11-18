@@ -99,6 +99,7 @@ const RANDOM_THEMES = [
 let currentQueries = [];
 let currentTheme = '';
 let isAutomating = false;
+let isThemeLocked = false;
 
 // Очистка storage при установке/обновлении расширения
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -177,7 +178,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     checkActiveTab().then(sendResponse);
     return true;
   } else if (message.type === 'GET_STATE') {
-    sendResponse({ currentQueries, currentTheme, isAutomating });
+    sendResponse({ currentQueries, currentTheme, isAutomating, isThemeLocked });
     return true;
   } else if (message.type === 'GENERATE_QUERIES') {
     generateQueries().then(sendResponse);
@@ -194,7 +195,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.tab) {
       sidePanelState.set(sender.tab.windowId, true);
     }
-    sendResponse({ currentQueries, currentTheme, isAutomating });
+    sendResponse({ currentQueries, currentTheme, isAutomating, isThemeLocked });
+    return true;
+  } else if (message.type === 'SET_THEME_LOCK') {
+    isThemeLocked = message.locked;
+    saveState();
     return true;
   } else if (message.type === 'SIDEPANEL_CLOSED') {
     // Sidepanel сообщает, что закрылась
@@ -234,13 +239,14 @@ async function saveState() {
   await chrome.storage.local.set({
     currentQueries,
     currentTheme,
-    isAutomating
+    isAutomating,
+    isThemeLocked
   });
 }
 
 // Загрузка состояния
 async function loadState() {
-  const data = await chrome.storage.local.get(['currentQueries', 'currentTheme', 'isAutomating']);
+  const data = await chrome.storage.local.get(['currentQueries', 'currentTheme', 'isAutomating', 'isThemeLocked']);
   if (data.currentQueries) {
     currentQueries = data.currentQueries;
   }
@@ -249,6 +255,9 @@ async function loadState() {
   }
   if (data.isAutomating !== undefined) {
     isAutomating = data.isAutomating;
+  }
+  if (data.isThemeLocked !== undefined) {
+    isThemeLocked = data.isThemeLocked;
   }
 }
 
@@ -328,7 +337,8 @@ One question per line, no numbering.`
 
 // Генерация запросов
 async function generateQueries() {
-  const theme = getRandomTheme();
+  // Если тема заблокирована, используем текущую тему
+  const theme = isThemeLocked && currentTheme ? currentTheme : getRandomTheme();
   currentTheme = theme;
   
   const aiQueries = await generateQueriesWithAI(theme);

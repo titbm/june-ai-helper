@@ -3,6 +3,7 @@ let currentQueries = [];
 let isJuneTabOpen = false;
 let isAutomating = false;
 let currentTheme = '';
+let isThemeLocked = false;
 
 // Элементы DOM
 const generateBtn = document.getElementById('generateBtn');
@@ -11,6 +12,7 @@ const queriesList = document.getElementById('queriesList');
 const statusDiv = document.getElementById('status');
 const footer = document.querySelector('footer');
 const themeHeader = document.getElementById('themeHeader');
+const lockBtn = document.getElementById('lockBtn');
 
 // Загрузка состояния из background
 async function loadState() {
@@ -19,13 +21,52 @@ async function loadState() {
     currentQueries = state.currentQueries || [];
     currentTheme = state.currentTheme || '';
     isAutomating = state.isAutomating || false;
+    isThemeLocked = state.isThemeLocked || false;
     
     if (currentTheme) {
       themeHeader.textContent = `Тема: ${currentTheme}`;
     }
     
+    updateLockButton();
     renderQueries();
   }
+}
+
+// Обновление кнопки замка
+function updateLockButton() {
+  if (isThemeLocked) {
+    lockBtn.classList.add('locked');
+    lockBtn.title = 'Разблокировать тему';
+  } else {
+    lockBtn.classList.remove('locked');
+    lockBtn.title = 'Заблокировать тему';
+  }
+}
+
+// Переключение блокировки темы
+async function toggleThemeLock() {
+  if (!currentTheme) {
+    statusDiv.textContent = '✗ Сначала сгенерируйте тему';
+    statusDiv.style.color = '#ef4444';
+    setTimeout(() => statusDiv.textContent = '', 2000);
+    return;
+  }
+  
+  isThemeLocked = !isThemeLocked;
+  updateLockButton();
+  
+  await chrome.runtime.sendMessage({ 
+    type: 'SET_THEME_LOCK', 
+    locked: isThemeLocked 
+  });
+  
+  if (isThemeLocked) {
+    statusDiv.textContent = '🔒 Тема заблокирована';
+  } else {
+    statusDiv.textContent = '🔓 Тема разблокирована';
+  }
+  statusDiv.style.color = '#6b7280';
+  setTimeout(() => statusDiv.textContent = '', 2000);
 }
 
 // Проверка активной вкладки
@@ -240,6 +281,7 @@ chrome.runtime.onMessage.addListener((message) => {
     currentQueries = message.queries;
     currentTheme = message.theme;
     themeHeader.textContent = `Тема: ${currentTheme}`;
+    updateLockButton();
     renderQueries();
     checkJuneTab();
   } else if (message.type === 'GENERATING') {
@@ -251,6 +293,7 @@ chrome.runtime.onMessage.addListener((message) => {
 // События
 generateBtn.addEventListener('click', generateQueries);
 automateBtn.addEventListener('click', automate);
+lockBtn.addEventListener('click', toggleThemeLock);
 
 // Уведомляем background при закрытии панели
 window.addEventListener('beforeunload', () => {
@@ -266,6 +309,7 @@ async function init() {
     currentQueries = state.currentQueries || [];
     currentTheme = state.currentTheme || '';
     isAutomating = state.isAutomating || false;
+    isThemeLocked = state.isThemeLocked || false;
     
     if (currentTheme) {
       themeHeader.textContent = `Тема: ${currentTheme}`;

@@ -18,10 +18,48 @@ body {
   height: 100vh;
   padding: 20px 16px;
   background: transparent;
+  position: relative;
+}
+
+.lock-btn {
+  position: absolute;
+  top: 20px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: #6b7280;
+  z-index: 10;
+}
+
+.lock-btn:hover {
+  background: #fafafa;
+  border-color: #d0d0d0;
+  transform: scale(1.05);
+}
+
+.lock-btn.locked {
+  background: #08474c;
+  border-color: #08474c;
+  color: white;
+}
+
+.lock-btn.locked:hover {
+  background: #06393d;
+  border-color: #06393d;
 }
 
 .theme-header {
   margin-bottom: 20px;
+  margin-right: 40px;
   font-size: 18px;
   font-weight: 600;
   color: #1a1a1a;
