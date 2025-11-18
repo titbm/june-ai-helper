@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "JuneAI Helper",
+  "version": "1.0.0",
+  "description": "Автоматическая отправка запросов в June AI",
+  "permissions": ["sidePanel", "storage"],
+  "host_permissions": ["https://askjune.ai/*"],
+  "action": {},
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://askjune.ai/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
