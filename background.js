@@ -1,5 +1,5 @@
-// OpenRouter API
-const OPENROUTER_API_KEY = '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';
+// API Configuration
+const API_URL = 'https://juneai-helper-api.juneai.workers.dev';
 const FREE_MODELS = [
   'google/gemma-3-27b-it:free',
   'google/gemini-2.0-flash-exp:free',
@@ -287,10 +287,9 @@ async function generateQueriesWithAI(theme) {
   
   for (const model of FREE_MODELS) {
     try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

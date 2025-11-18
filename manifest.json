@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Автоматическая отправка запросов в June AI",
   "permissions": ["sidePanel", "storage"],
-  "host_permissions": ["https://askjune.ai/*"],
+  "host_permissions": ["https://askjune.ai/*", "https://juneai-helper-api.juneai.workers.dev/*"],
   "action": {},
   "side_panel": {
     "default_path": "sidepanel.html"
