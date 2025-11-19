@@ -392,6 +392,11 @@ async function handleAutomate() {
   const automationTabId = tab.id;
   currentAutomationTabId = automationTabId;
   
+  // Создаем overlay для блокировки интерфейса
+  try {
+    await chrome.tabs.sendMessage(automationTabId, { type: 'START_AUTOMATION' });
+  } catch {}
+  
   // Создаем новый чат
   try {
     await chrome.tabs.sendMessage(automationTabId, { type: 'CLICK_NEW_CHAT' });
@@ -401,6 +406,9 @@ async function handleAutomate() {
   // Отправляем запросы
   for (let i = 0; i < currentQueries.length; i++) {
     if (shouldStopAutomation) {
+      try {
+        await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
+      } catch {}
       notifySidepanel(null, { type: 'STOPPED' });
       shouldStopAutomation = false;
       isAutomating = false;
@@ -417,6 +425,9 @@ async function handleAutomate() {
       });
       
       if (response && response.stopped) {
+        try {
+          await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
+        } catch {}
         notifySidepanel(null, { type: 'STOPPED' });
         shouldStopAutomation = false;
         isAutomating = false;
@@ -429,6 +440,9 @@ async function handleAutomate() {
       const startTime = Date.now();
       while (Date.now() - startTime < delay) {
         if (shouldStopAutomation) {
+          try {
+            await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
+          } catch {}
           notifySidepanel(null, { type: 'STOPPED' });
           shouldStopAutomation = false;
           isAutomating = false;
@@ -441,6 +455,11 @@ async function handleAutomate() {
     } catch {}
   }
 
+  // Удаляем overlay после завершения
+  try {
+    await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
+  } catch {}
+  
   notifySidepanel(null, { type: 'COMPLETE' });
   shouldStopAutomation = false;
   isAutomating = false;
