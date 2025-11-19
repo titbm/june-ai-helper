@@ -56,12 +56,49 @@ async function insertAndSubmit(text) {
     
     if (!submitBtn.disabled) {
       submitBtn.click();
+      
+      // Ждем завершения ответа бота
+      await waitForBotResponse();
     }
     
     return { success: true };
   }
   
   return { success: false };
+}
+
+// Ожидание завершения ответа бота
+async function waitForBotResponse() {
+  return new Promise((resolve) => {
+    let checkCount = 0;
+    const maxChecks = 600; // 5 минут максимум
+    
+    const checkInterval = setInterval(() => {
+      if (shouldStopTyping) {
+        clearInterval(checkInterval);
+        resolve();
+        return;
+      }
+      
+      checkCount++;
+      if (checkCount > maxChecks) {
+        clearInterval(checkInterval);
+        chrome.runtime.sendMessage({ type: 'BOT_RESPONSE_COMPLETE' }).catch(() => {});
+        resolve();
+        return;
+      }
+      
+      // Проверяем, что кнопка submit снова активна (бот закончил отвечать)
+      const submitBtn = document.querySelector('button[aria-label="submit"]');
+      const textarea = document.querySelector('textarea[placeholder*="Type your question"]');
+      
+      if (submitBtn && !submitBtn.disabled && textarea && !textarea.disabled) {
+        clearInterval(checkInterval);
+        chrome.runtime.sendMessage({ type: 'BOT_RESPONSE_COMPLETE' }).catch(() => {});
+        resolve();
+      }
+    }, 500);
+  });
 }
 
 function clickNewChat() {

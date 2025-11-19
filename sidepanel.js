@@ -2,6 +2,7 @@
 let currentQueries = [];
 let isJuneTabOpen = false;
 let isAutomating = false;
+let isSending = false;
 let currentTheme = '';
 let isThemeLocked = false;
 
@@ -203,20 +204,22 @@ async function copyToClipboard(text) {
 
 // Отправка одного запроса в June
 async function sendToJune(query) {
+  if (isSending) {
+    return; // Блокируем повторную отправку
+  }
+  
   await checkJuneTab();
   if (!isJuneTabOpen) {
     openJuneAI();
     return;
   }
   
+  isSending = true;
+  
   chrome.runtime.sendMessage({ type: 'SEND_TO_JUNE', query });
   
-  statusDiv.textContent = '→ Отправлено в June AI';
+  statusDiv.textContent = '→ Ожидание ответа от June AI...';
   statusDiv.style.color = '#6b7280';
-  setTimeout(() => {
-    statusDiv.textContent = '';
-    checkJuneTab();
-  }, 2000);
 }
 
 // Отправка всех запросов
@@ -230,6 +233,10 @@ async function automate() {
     return;
   }
   
+  if (isSending) {
+    return; // Блокируем запуск автоматизации во время отправки
+  }
+  
   if (currentQueries.length === 0) return;
   
   await checkJuneTab();
@@ -239,6 +246,7 @@ async function automate() {
   }
   
   isAutomating = true;
+  isSending = true;
   automateBtn.textContent = 'Остановить отправку';
   automateBtn.classList.add('stopping');
   automateBtn.disabled = false;
@@ -272,6 +280,7 @@ chrome.runtime.onMessage.addListener((message) => {
     automateBtn.classList.remove('stopping');
     automateBtn.disabled = false;
     isAutomating = false;
+    isSending = false;
   } else if (message.type === 'STOPPED') {
     statusDiv.textContent = '⏸ Отправка остановлена';
     statusDiv.style.color = '#6b7280';
@@ -279,6 +288,7 @@ chrome.runtime.onMessage.addListener((message) => {
     automateBtn.classList.remove('stopping');
     automateBtn.disabled = false;
     isAutomating = false;
+    isSending = false;
   } else if (message.type === 'QUERIES_UPDATED') {
     currentQueries = message.queries;
     currentTheme = message.theme;
@@ -291,6 +301,8 @@ chrome.runtime.onMessage.addListener((message) => {
   } else if (message.type === 'GENERATING') {
     statusDiv.textContent = 'Запрос на генерацию отправлен, ждем...';
     statusDiv.style.color = '#6b7280';
+  } else if (message.type === 'BOT_RESPONSE_COMPLETE') {
+    isSending = false;
   }
 });
 

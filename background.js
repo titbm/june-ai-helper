@@ -190,6 +190,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'STOP_AUTOMATION') {
     shouldStopAutomation = true;
     stopTypingInTab();
+  } else if (message.type === 'BOT_RESPONSE_COMPLETE') {
+    // Уведомляем sidepanel что бот закончил отвечать
+    notifySidepanel(null, { type: 'BOT_RESPONSE_COMPLETE' });
   } else if (message.type === 'SIDEPANEL_OPENED') {
     // Sidepanel сообщает, что открылась - отправляем текущее состояние
     if (sender.tab) {
