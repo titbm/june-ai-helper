@@ -156,8 +156,8 @@ async function insertAndSubmit(text) {
     if (!submitBtn.disabled) {
       submitBtn.click();
       
-      // Ждем завершения ответа бота
-      await waitForBotResponse();
+      // Запускаем ожидание ответа бота асинхронно
+      waitForBotResponse();
     }
     
     return { success: true };

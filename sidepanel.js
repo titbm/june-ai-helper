@@ -215,11 +215,10 @@ async function sendToJune(query) {
   }
   
   isSending = true;
+  statusDiv.textContent = 'Вводим сообщение...';
+  statusDiv.style.color = '#6b7280';
   
   chrome.runtime.sendMessage({ type: 'SEND_TO_JUNE', query });
-  
-  statusDiv.textContent = '→ Ожидание ответа от June AI...';
-  statusDiv.style.color = '#6b7280';
 }
 
 // Отправка всех запросов
@@ -275,7 +274,7 @@ chrome.runtime.onMessage.addListener((message) => {
     statusDiv.style.color = '#6b7280';
   } else if (message.type === 'COMPLETE') {
     statusDiv.textContent = '✓ Отправка завершена!';
-    statusDiv.style.color = '#10b981';
+    statusDiv.style.color = '#6b7280';
     automateBtn.textContent = 'Отправить все запросы';
     automateBtn.classList.remove('stopping');
     automateBtn.disabled = false;
@@ -303,6 +302,7 @@ chrome.runtime.onMessage.addListener((message) => {
     statusDiv.style.color = '#6b7280';
   } else if (message.type === 'BOT_RESPONSE_COMPLETE') {
     isSending = false;
+    statusDiv.textContent = '';
   }
 });
 
