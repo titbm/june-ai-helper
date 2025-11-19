@@ -102,6 +102,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'STOP_AUTOMATION') {
     removeBlockOverlay();
     sendResponse({ success: true });
+  } else if (message.type === 'CHECK_CHAT_HAS_MESSAGES') {
+    sendResponse({ hasMessages: checkIfChatHasMessages() });
+  } else if (message.type === 'SHOW_CHAT_CHOICE_DIALOG') {
+    showChatChoiceDialog().then(choice => sendResponse({ choice }));
+    return true;
   }
   return true;
 });
@@ -204,4 +209,150 @@ function clickNewChat() {
     return { success: true };
   }
   return { success: false };
+}
+
+// Проверка, есть ли сообщения в текущем чате
+function checkIfChatHasMessages() {
+  // Самый надежный способ - проверяем наличие заголовка "Ask me anything"
+  // Если он есть - чат пустой, если нет - есть сообщения
+  const emptyStateHeading = document.querySelector('main h2');
+  const hasEmptyState = emptyStateHeading && 
+                       emptyStateHeading.textContent.includes('Ask me anything');
+  
+  // Если есть empty state - чат пустой
+  if (hasEmptyState) {
+    return false;
+  }
+  
+  // Дополнительная проверка - ищем реальные сообщения (параграфы в main)
+  const actualMessages = Array.from(document.querySelectorAll('main p')).filter(p => 
+    p.textContent.trim().length > 0 && 
+    !p.textContent.includes('Type your question') &&
+    !p.textContent.includes('Ask me anything')
+  );
+  
+  return actualMessages.length > 0;
+}
+
+// Показ диалога выбора чата
+function showChatChoiceDialog() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 9999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+    
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    `;
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Куда отправить запросы?';
+    title.style.cssText = `
+      margin: 0 0 12px 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      text-align: center;
+    `;
+    
+    const description = document.createElement('p');
+    description.textContent = 'У вас открыт чат с сообщениями. Выберите, куда отправить новые запросы:';
+    description.style.cssText = `
+      margin: 0 0 20px 0;
+      font-size: 14px;
+      color: #6b7280;
+      line-height: 1.6;
+      text-align: center;
+      font-weight: 400;
+    `;
+    
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+      display: flex;
+      gap: 12px;
+    `;
+    
+    const currentChatBtn = document.createElement('button');
+    currentChatBtn.textContent = 'В этот чат';
+    currentChatBtn.style.cssText = `
+      flex: 1;
+      height: 40px;
+      padding: 0 16px;
+      background: #f3f4f6;
+      border: 1px solid #e8e8e8;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a1a;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    `;
+    currentChatBtn.onmouseover = () => {
+      currentChatBtn.style.background = '#e5e7eb';
+      currentChatBtn.style.borderColor = '#d0d0d0';
+      currentChatBtn.style.transform = 'translateY(-1px)';
+    };
+    currentChatBtn.onmouseout = () => {
+      currentChatBtn.style.background = '#f3f4f6';
+      currentChatBtn.style.borderColor = '#e8e8e8';
+      currentChatBtn.style.transform = 'translateY(0)';
+    };
+    currentChatBtn.onclick = () => {
+      overlay.remove();
+      resolve('current');
+    };
+    
+    const newChatBtn = document.createElement('button');
+    newChatBtn.textContent = 'В новый чат';
+    newChatBtn.style.cssText = `
+      flex: 1;
+      height: 40px;
+      padding: 0 16px;
+      background: #08474c;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fafafa;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    `;
+    newChatBtn.onmouseover = () => {
+      newChatBtn.style.background = '#06393d';
+      newChatBtn.style.transform = 'translateY(-1px)';
+    };
+    newChatBtn.onmouseout = () => {
+      newChatBtn.style.background = '#08474c';
+      newChatBtn.style.transform = 'translateY(0)';
+    };
+    newChatBtn.onclick = () => {
+      overlay.remove();
+      resolve('new');
+    };
+    
+    buttonsContainer.appendChild(currentChatBtn);
+    buttonsContainer.appendChild(newChatBtn);
+    
+    dialog.appendChild(title);
+    dialog.appendChild(description);
+    dialog.appendChild(buttonsContainer);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+  });
 }

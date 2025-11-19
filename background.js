@@ -392,16 +392,39 @@ async function handleAutomate() {
   const automationTabId = tab.id;
   currentAutomationTabId = automationTabId;
   
+  // Проверяем, есть ли сообщения в текущем чате
+  let shouldCreateNewChat = true;
+  try {
+    const checkResponse = await chrome.tabs.sendMessage(automationTabId, { 
+      type: 'CHECK_CHAT_HAS_MESSAGES' 
+    });
+    
+    if (checkResponse && checkResponse.hasMessages) {
+      // Показываем диалог выбора
+      const choiceResponse = await chrome.tabs.sendMessage(automationTabId, { 
+        type: 'SHOW_CHAT_CHOICE_DIALOG' 
+      });
+      
+      if (choiceResponse && choiceResponse.choice === 'current') {
+        shouldCreateNewChat = false;
+      }
+    }
+  } catch (error) {
+    console.log('Ошибка проверки чата:', error);
+  }
+  
   // Создаем overlay для блокировки интерфейса
   try {
     await chrome.tabs.sendMessage(automationTabId, { type: 'START_AUTOMATION' });
   } catch {}
   
-  // Создаем новый чат
-  try {
-    await chrome.tabs.sendMessage(automationTabId, { type: 'CLICK_NEW_CHAT' });
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  } catch {}
+  // Создаем новый чат, если пользователь выбрал эту опцию
+  if (shouldCreateNewChat) {
+    try {
+      await chrome.tabs.sendMessage(automationTabId, { type: 'CLICK_NEW_CHAT' });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch {}
+  }
 
   // Отправляем запросы
   for (let i = 0; i < currentQueries.length; i++) {
