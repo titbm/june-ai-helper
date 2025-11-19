@@ -259,6 +259,7 @@ function showChatChoiceDialog() {
       padding: 24px;
       max-width: 400px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      font-weight: 400;
     `;
     
     const title = document.createElement('h3');
@@ -294,24 +295,27 @@ function showChatChoiceDialog() {
       flex: 1;
       height: 40px;
       padding: 0 16px;
-      background: #f3f4f6;
-      border: 1px solid #e8e8e8;
+      background: rgb(255, 255, 255);
+      border: 1px solid rgb(187, 200, 201);
       border-radius: 6px;
       font-size: 14px;
-      font-weight: 600;
-      color: #1a1a1a;
+      font-weight: 500;
+      color: rgb(43, 50, 51);
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     `;
     currentChatBtn.onmouseover = () => {
-      currentChatBtn.style.background = '#e5e7eb';
-      currentChatBtn.style.borderColor = '#d0d0d0';
-      currentChatBtn.style.transform = 'translateY(-1px)';
+      currentChatBtn.style.background = 'rgb(230, 248, 250)';
+      currentChatBtn.style.color = 'rgb(8, 71, 76)';
+      currentChatBtn.style.borderColor = 'rgb(187, 200, 201)';
     };
     currentChatBtn.onmouseout = () => {
-      currentChatBtn.style.background = '#f3f4f6';
-      currentChatBtn.style.borderColor = '#e8e8e8';
-      currentChatBtn.style.transform = 'translateY(0)';
+      currentChatBtn.style.background = 'rgb(255, 255, 255)';
+      currentChatBtn.style.color = 'rgb(43, 50, 51)';
+      currentChatBtn.style.borderColor = 'rgb(187, 200, 201)';
     };
     currentChatBtn.onclick = () => {
       overlay.remove();
@@ -323,23 +327,24 @@ function showChatChoiceDialog() {
     newChatBtn.style.cssText = `
       flex: 1;
       height: 40px;
-      padding: 0 16px;
-      background: #08474c;
+      padding: 8px 16px;
+      background: rgb(8, 71, 76);
       border: none;
       border-radius: 6px;
       font-size: 14px;
-      font-weight: 600;
-      color: #fafafa;
+      font-weight: 500;
+      color: rgb(250, 250, 250);
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     `;
     newChatBtn.onmouseover = () => {
-      newChatBtn.style.background = '#06393d';
-      newChatBtn.style.transform = 'translateY(-1px)';
+      newChatBtn.style.background = 'rgb(8, 71, 76)';
     };
     newChatBtn.onmouseout = () => {
-      newChatBtn.style.background = '#08474c';
-      newChatBtn.style.transform = 'translateY(0)';
+      newChatBtn.style.background = 'rgb(8, 71, 76)';
     };
     newChatBtn.onclick = () => {
       overlay.remove();

@@ -25,25 +25,30 @@ body {
   position: absolute;
   top: 20px;
   right: 16px;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  background: white;
-  border: 1px solid #e8e8e8;
+  background: rgb(255, 255, 255);
+  border: 1px solid rgb(187, 200, 201);
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  color: #6b7280;
+  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  color: rgb(43, 50, 51);
   z-index: 10;
 }
 
+.lock-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 .lock-btn:hover {
-  background: #fafafa;
-  border-color: #d0d0d0;
-  transform: scale(1.05);
+  background: rgb(230, 248, 250);
+  color: rgb(8, 71, 76);
+  border-color: rgb(187, 200, 201);
 }
 
 .lock-btn.locked {
@@ -71,29 +76,27 @@ body {
 .btn-primary {
   width: 100%;
   height: 40px;
-  padding: 0 16px;
-  background: #08474c;
-  color: #fafafa;
+  padding: 8px 16px;
+  background: rgb(8, 71, 76);
+  color: rgb(250, 250, 250);
   border: none;
   border-radius: 6px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
+  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
 }
 
 .btn-primary:hover {
-  background: #06393d;
-  transform: translateY(-1px);
+  background: rgb(8, 71, 76);
 }
 
 .btn-primary:active {
-  background: #052d30;
-  transform: translateY(0);
+  background: rgb(8, 71, 76);
 }
 
 .queries-list {
@@ -191,14 +194,14 @@ footer.has-queries {
   width: 100%;
   height: 40px;
   padding: 0 16px;
-  background: #08474c;
-  color: #fafafa;
-  border: none;
+  background: rgb(255, 255, 255);
+  color: rgb(43, 50, 51);
+  border: 1px solid rgb(187, 200, 201);
   border-radius: 6px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   display: none;
 }
 
@@ -211,8 +214,9 @@ footer.has-queries .btn-automate {
 }
 
 .btn-automate:hover:not(:disabled) {
-  background: #06393d;
-  transform: translateY(-1px);
+  background: rgb(230, 248, 250);
+  color: rgb(8, 71, 76);
+  border-color: rgb(187, 200, 201);
 }
 
 .btn-automate:disabled {
@@ -222,11 +226,15 @@ footer.has-queries .btn-automate {
 }
 
 .btn-automate.stopping {
-  background: #dc2626;
+  background: rgb(255, 255, 255);
+  color: rgb(242, 71, 71);
+  border: 1px solid rgb(242, 71, 71);
 }
 
 .btn-automate.stopping:hover:not(:disabled) {
-  background: #b91c1c;
+  background: rgb(242, 71, 71);
+  color: rgb(255, 255, 255);
+  border-color: rgb(242, 71, 71);
 }
 
 .status {
