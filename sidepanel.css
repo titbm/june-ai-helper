@@ -280,10 +280,10 @@ footer.has-queries .btn-automate {
 }
 
 .queries-list::-webkit-scrollbar-thumb {
-  background: #d0d0d0;
+  background: #e6f8fa;
   border-radius: 4px;
 }
 
 .queries-list::-webkit-scrollbar-thumb:hover {
-  background: #b0b0b0;
+  background: #bbc8c9;
 }
