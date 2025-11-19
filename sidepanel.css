@@ -91,6 +91,14 @@ body {
   gap: 8px;
 }
 
+.btn-primary svg {
+  transition: transform 0.3s ease;
+}
+
+.btn-primary:hover svg {
+  transform: scale(1.1) rotate(15deg);
+}
+
 .btn-primary:hover {
   background: rgb(8, 71, 76);
 }

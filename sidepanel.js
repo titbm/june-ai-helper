@@ -119,10 +119,20 @@ function updateUI() {
   }
 }
 
+// Обновление текста кнопки генерации с сохранением иконки
+function updateGenerateButtonText(text) {
+  const span = generateBtn.querySelector('span');
+  if (span) {
+    span.textContent = text;
+  } else {
+    generateBtn.textContent = text;
+  }
+}
+
 // Генерация запросов
 async function generateQueries() {
   generateBtn.disabled = true;
-  generateBtn.textContent = 'Генерация...';
+  updateGenerateButtonText('Генерация...');
   statusDiv.textContent = 'Запрос отправлен, ждем ответа...';
   statusDiv.style.color = '#6b7280';
   
@@ -135,7 +145,7 @@ async function generateQueries() {
   }
   
   generateBtn.disabled = false;
-  generateBtn.textContent = 'Обновить запросы';
+  updateGenerateButtonText('Обновить запросы');
   
   renderQueries();
   await checkJuneTab();
@@ -149,7 +159,12 @@ function renderQueries() {
     queriesList.innerHTML = `
       <div class="empty-state">
         <p>Нажмите "Сгенерировать запросы"<br>чтобы создать 10 вопросов</p>
-        <button id="generateBtnCenter" class="btn-primary">Сгенерировать запросы</button>
+        <button id="generateBtnCenter" class="btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+          </svg>
+          <span>Сгенерировать запросы</span>
+        </button>
       </div>
     `;
     queriesList.classList.add('empty');

@@ -1,5 +1,6 @@
 let shouldStopTyping = false;
 let blockOverlay = null;
+let chatChoiceDialog = null;
 
 // Создание блокирующего overlay
 function createBlockOverlay() {
@@ -95,12 +96,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'STOP_TYPING') {
     shouldStopTyping = true;
     removeBlockOverlay();
+    closeChatChoiceDialog();
     sendResponse({ success: true });
   } else if (message.type === 'START_AUTOMATION') {
     createBlockOverlay();
     sendResponse({ success: true });
   } else if (message.type === 'STOP_AUTOMATION') {
     removeBlockOverlay();
+    closeChatChoiceDialog();
     sendResponse({ success: true });
   } else if (message.type === 'CHECK_CHAT_HAS_MESSAGES') {
     sendResponse({ hasMessages: checkIfChatHasMessages() });
@@ -234,6 +237,14 @@ function checkIfChatHasMessages() {
   return actualMessages.length > 0;
 }
 
+// Закрытие диалога выбора чата
+function closeChatChoiceDialog() {
+  if (chatChoiceDialog) {
+    chatChoiceDialog.remove();
+    chatChoiceDialog = null;
+  }
+}
+
 // Показ диалога выбора чата
 function showChatChoiceDialog() {
   return new Promise((resolve) => {
@@ -251,6 +262,8 @@ function showChatChoiceDialog() {
       justify-content: center;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `;
+    
+    chatChoiceDialog = overlay;
     
     const dialog = document.createElement('div');
     dialog.style.cssText = `
@@ -318,7 +331,7 @@ function showChatChoiceDialog() {
       currentChatBtn.style.borderColor = 'rgb(187, 200, 201)';
     };
     currentChatBtn.onclick = () => {
-      overlay.remove();
+      closeChatChoiceDialog();
       resolve('current');
     };
     
@@ -347,7 +360,7 @@ function showChatChoiceDialog() {
       newChatBtn.style.background = 'rgb(8, 71, 76)';
     };
     newChatBtn.onclick = () => {
-      overlay.remove();
+      closeChatChoiceDialog();
       resolve('new');
     };
     
