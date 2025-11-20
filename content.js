@@ -240,6 +240,10 @@ function checkIfChatHasMessages() {
 // Закрытие диалога выбора чата
 function closeChatChoiceDialog() {
   if (chatChoiceDialog) {
+    // Если есть pending promise, resolve с cancelled
+    if (chatChoiceDialog.resolvePromise) {
+      chatChoiceDialog.resolvePromise('cancelled');
+    }
     chatChoiceDialog.remove();
     chatChoiceDialog = null;
   }
@@ -264,6 +268,8 @@ function showChatChoiceDialog() {
     `;
     
     chatChoiceDialog = overlay;
+    // Сохраняем resolve функцию для возможности отмены
+    chatChoiceDialog.resolvePromise = resolve;
     
     const dialog = document.createElement('div');
     dialog.style.cssText = `
@@ -332,7 +338,11 @@ function showChatChoiceDialog() {
       currentChatBtn.style.borderColor = 'rgb(187, 200, 201)';
     };
     currentChatBtn.onclick = () => {
-      closeChatChoiceDialog();
+      // Удаляем диалог без вызова resolve в closeChatChoiceDialog
+      if (chatChoiceDialog) {
+        chatChoiceDialog.remove();
+        chatChoiceDialog = null;
+      }
       resolve('current');
     };
     
@@ -362,7 +372,11 @@ function showChatChoiceDialog() {
       newChatBtn.style.background = 'rgb(8, 71, 76)';
     };
     newChatBtn.onclick = () => {
-      closeChatChoiceDialog();
+      // Удаляем диалог без вызова resolve в closeChatChoiceDialog
+      if (chatChoiceDialog) {
+        chatChoiceDialog.remove();
+        chatChoiceDialog = null;
+      }
       resolve('new');
     };
     

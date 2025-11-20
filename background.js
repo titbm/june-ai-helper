@@ -405,12 +405,47 @@ async function handleAutomate() {
         type: 'SHOW_CHAT_CHOICE_DIALOG' 
       });
       
+      // Если диалог был отменен (закрыт через STOP), останавливаем автоматизацию
+      if (choiceResponse && choiceResponse.choice === 'cancelled') {
+        try {
+          await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
+        } catch {}
+        notifySidepanel(null, { type: 'STOPPED' });
+        shouldStopAutomation = false;
+        isAutomating = false;
+        currentAutomationTabId = null;
+        await saveState();
+        return;
+      }
+      
       if (choiceResponse && choiceResponse.choice === 'current') {
         shouldCreateNewChat = false;
       }
     }
   } catch (error) {
     console.log('Ошибка проверки чата:', error);
+    // Если была остановка, выходим
+    if (shouldStopAutomation) {
+      try {
+        await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
+      } catch {}
+      notifySidepanel(null, { type: 'STOPPED' });
+      shouldStopAutomation = false;
+      isAutomating = false;
+      currentAutomationTabId = null;
+      await saveState();
+      return;
+    }
+  }
+  
+  // Проверяем еще раз перед созданием overlay
+  if (shouldStopAutomation) {
+    notifySidepanel(null, { type: 'STOPPED' });
+    shouldStopAutomation = false;
+    isAutomating = false;
+    currentAutomationTabId = null;
+    await saveState();
+    return;
   }
   
   // Создаем overlay для блокировки интерфейса
