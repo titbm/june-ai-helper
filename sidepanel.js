@@ -106,6 +106,9 @@ function updateUI() {
     document.querySelectorAll('.june-btn').forEach(btn => {
       btn.style.display = 'none';
     });
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.style.display = 'flex';
+    });
   } else {
     statusDiv.textContent = '';
     statusDiv.style.color = '#6b7280';
@@ -115,6 +118,9 @@ function updateUI() {
     
     document.querySelectorAll('.june-btn').forEach(btn => {
       btn.style.display = 'flex';
+    });
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.style.display = 'none';
     });
   }
 }
@@ -179,6 +185,12 @@ function renderQueries() {
     <div class="query-item" data-index="${index}">
       <div class="query-text">${query}</div>
       <button class="june-btn" data-index="${index}">June</button>
+      <button class="copy-btn" data-index="${index}" title="Копировать в буфер обмена">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+        </svg>
+      </button>
     </div>
   `).join('');
 
@@ -186,7 +198,7 @@ function renderQueries() {
   footer.classList.remove('empty-state');
   footer.classList.add('has-queries');
 
-  // Обработчики для копирования
+  // Обработчики для копирования по клику на запрос
   document.querySelectorAll('.query-item').forEach(item => {
     item.addEventListener('click', (e) => {
       if (!e.target.classList.contains('june-btn')) {
