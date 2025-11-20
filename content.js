@@ -28,7 +28,7 @@ function createBlockOverlay() {
     background: white;
     color: #1a1a1a;
     padding: 12px 20px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: Inter, "Inter Fallback", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
     font-weight: 500;
     text-align: center;
@@ -260,7 +260,7 @@ function showChatChoiceDialog() {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: Inter, "Inter Fallback", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `;
     
     chatChoiceDialog = overlay;
@@ -311,6 +311,7 @@ function showChatChoiceDialog() {
       background: rgb(255, 255, 255);
       border: 1px solid rgb(187, 200, 201);
       border-radius: 6px;
+      font-family: Inter, "Inter Fallback", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 14px;
       font-weight: 500;
       color: rgb(43, 50, 51);
@@ -344,6 +345,7 @@ function showChatChoiceDialog() {
       background: rgb(8, 71, 76);
       border: none;
       border-radius: 6px;
+      font-family: Inter, "Inter Fallback", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 14px;
       font-weight: 500;
       color: rgb(250, 250, 250);
