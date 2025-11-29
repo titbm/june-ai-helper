@@ -165,8 +165,19 @@ function openJuneAI() {
 function updateJuneButtons() {
   const buttons = document.querySelectorAll('.june-btn');
   buttons.forEach(btn => {
-    btn.disabled = isBotResponding; // Блокируем только когда бот отвечает
+    btn.disabled = isBotResponding || isAutomating; // Блокируем когда бот отвечает или идет автоотправка
   });
+}
+
+// Обновление состояния всех кнопок управления
+function updateControlButtons() {
+  // Блокируем кнопки генерации, языка и замка во время автоматизации
+  generateBtn.disabled = isAutomating;
+  langBtn.disabled = isAutomating;
+  lockBtn.disabled = isAutomating;
+  
+  // Также блокируем все кнопки June
+  updateJuneButtons();
 }
 
 // Обновление UI
@@ -179,6 +190,7 @@ function updateUI() {
       statusDiv.textContent = 'Отправка запущена...';
       statusDiv.style.color = '#6b7280';
     }
+    updateControlButtons(); // Блокируем все кнопки
     return;
   }
   
@@ -208,6 +220,9 @@ function updateUI() {
       btn.style.display = 'none';
     });
   }
+  
+  // Обновляем состояние всех кнопок
+  updateControlButtons();
 }
 
 // Обновление текста кнопки генерации с сохранением иконки
@@ -299,11 +314,10 @@ function renderQueries() {
   // Обработчики для кнопок June
   document.querySelectorAll('.june-btn').forEach(btn => {
     // Устанавливаем начальное состояние
-    btn.disabled = isBotResponding;
+    btn.disabled = isBotResponding || isAutomating;
     
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (isBotResponding) return; // Блокируем только если бот отвечает
       const index = btn.dataset.index;
       sendToJune(currentQueries[index]);
     });
@@ -366,19 +380,22 @@ async function sendToJune(query) {
   try {
     const response = await chrome.runtime.sendMessage({ type: 'SEND_TO_JUNE', query });
     
+    // Проверяем актуальность
+    if (myRequestId !== sendingRequestId) {
+      return;
+    }
+    
     if (response && response.success) {
-      // Проверяем актуальность для обновления UI
-      if (myRequestId !== sendingRequestId) {
-        return;
-      }
-      
       statusDiv.textContent = '✓ Отправлено';
       statusDiv.style.color = '#6b7280';
+    } else if (response && response.stopped) {
+      // Процесс был остановлен - не показываем ошибку
+      statusDiv.textContent = '';
     } else if (response && response.error && response.error.includes('отвечает')) {
-      // Бот уже отвечает - кнопки заблокированы, сообщение не нужно
-      return;
-    } else {
-      statusDiv.textContent = '✗ Ошибка отправки';
+      // Бот уже отвечает - не показываем ошибку
+      statusDiv.textContent = '';
+    } else if (response && response.error) {
+      statusDiv.textContent = '✗ ' + response.error;
       statusDiv.style.color = '#ef4444';
     }
   } catch (error) {
@@ -389,6 +406,7 @@ async function sendToJune(query) {
   } finally {
     if (myRequestId === sendingRequestId) {
       isSending = false;
+      updateJuneButtons(); // Разблокируем кнопки
       setTimeout(() => {
         if (myRequestId === sendingRequestId) {
           statusDiv.textContent = '';
@@ -409,8 +427,13 @@ async function automate() {
     return;
   }
   
+  // Если идет одиночная отправка - прерываем её
   if (isSending) {
-    return; // Блокируем запуск автоматизации во время отправки
+    await chrome.runtime.sendMessage({ type: 'STOP_SINGLE_SEND' });
+    isSending = false;
+    updateJuneButtons();
+    // Небольшая задержка для завершения прерывания
+    await new Promise(resolve => setTimeout(resolve, 200));
   }
   
   if (currentQueries.length === 0) return;
@@ -429,6 +452,9 @@ async function automate() {
   statusDiv.textContent = 'Запуск отправки...';
   statusDiv.style.color = '#6b7280';
   
+  // Блокируем все кнопки
+  updateControlButtons();
+  
   chrome.runtime.sendMessage({ type: 'AUTOMATE' });
 }
 
@@ -446,6 +472,7 @@ chrome.runtime.onMessage.addListener((message) => {
     automateBtn.classList.remove('stopping');
     automateBtn.disabled = false;
     isAutomating = false;
+    updateControlButtons(); // Разблокируем кнопки
   } else if (message.type === 'PROGRESS') {
     statusDiv.textContent = `Отправка ${message.current} из ${message.total}...`;
     statusDiv.style.color = '#6b7280';
@@ -457,6 +484,7 @@ chrome.runtime.onMessage.addListener((message) => {
     automateBtn.disabled = false;
     isAutomating = false;
     isSending = false;
+    updateControlButtons(); // Разблокируем кнопки
   } else if (message.type === 'STOPPED') {
     statusDiv.textContent = '⏸ Отправка остановлена';
     statusDiv.style.color = '#6b7280';
@@ -465,6 +493,7 @@ chrome.runtime.onMessage.addListener((message) => {
     automateBtn.disabled = false;
     isAutomating = false;
     isSending = false;
+    updateControlButtons(); // Разблокируем кнопки
   } else if (message.type === 'QUERIES_UPDATED') {
     currentQueries = message.queries;
     currentTheme = message.theme;

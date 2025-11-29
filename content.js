@@ -136,6 +136,15 @@ async function insertAndSubmit(text, typingId) {
   const submitBtn = document.querySelector('button[aria-label="submit"]');
   
   if (textarea && submitBtn) {
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+    
+    // Сначала очищаем textarea, если там что-то есть
+    if (textarea.value.trim().length > 0) {
+      nativeSetter.call(textarea, '');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
     // Если кнопка enabled (бот отвечает) - игнорируем запрос
     if (!submitBtn.disabled) {
       return { success: false, error: 'Бот еще отвечает на предыдущий вопрос' };
@@ -143,7 +152,6 @@ async function insertAndSubmit(text, typingId) {
     
     // Вводим текст
     textarea.focus();
-    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
     const isTabActive = !document.hidden;
     
     if (isTabActive) {

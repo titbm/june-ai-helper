@@ -303,8 +303,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
       if (tab) {
         chrome.tabs.sendMessage(tab.id, { type: 'STOP_TYPING' }).catch(() => {});
+        chrome.tabs.sendMessage(tab.id, { type: 'CLEAR_AND_STOP' }).catch(() => {});
       }
+      sendResponse({ success: true });
     });
+    return true;
   } else if (message.type === 'AUTOMATE') {
     handleAutomate();
   } else if (message.type === 'STOP_AUTOMATION') {
@@ -393,8 +396,18 @@ async function handleSendToJune(query) {
       type: 'INSERT_AND_SUBMIT',
       text: query
     });
+    
+    // Если процесс был остановлен, не считаем это ошибкой
+    if (response && response.stopped) {
+      return { success: false, stopped: true };
+    }
+    
     return response || { success: true };
   } catch (error) {
+    // Игнорируем ошибки связанные с прерыванием
+    if (error.message && error.message.includes('message port closed')) {
+      return { success: false, stopped: true };
+    }
     return { success: false, error: error.message };
   }
 }
