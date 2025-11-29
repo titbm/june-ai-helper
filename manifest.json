@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "JuneAI Helper",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Автоматическая отправка запросов в June AI",
   "permissions": ["sidePanel", "storage"],
   "host_permissions": ["https://askjune.ai/*", "https://*.vercel.app/*"],
