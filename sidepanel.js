@@ -7,6 +7,7 @@ let isBotResponding = false; // Бот отвечает на вопрос
 let sendingRequestId = 0; // Счетчик для отслеживания запросов
 let currentTheme = '';
 let isThemeLocked = false;
+let currentLanguage = 'RU'; // Язык генерации запросов
 
 // Элементы DOM
 const generateBtn = document.getElementById('generateBtn');
@@ -16,6 +17,7 @@ const statusDiv = document.getElementById('status');
 const footer = document.querySelector('footer');
 const themeHeader = document.getElementById('themeHeader');
 const lockBtn = document.getElementById('lockBtn');
+const langBtn = document.getElementById('langBtn');
 
 // Загрузка состояния из background
 async function loadState() {
@@ -25,6 +27,7 @@ async function loadState() {
     currentTheme = state.currentTheme || '';
     isAutomating = state.isAutomating || false;
     isThemeLocked = state.isThemeLocked || false;
+    currentLanguage = state.currentLanguage || 'RU';
     
     if (currentTheme) {
       themeHeader.textContent = `Тема: ${currentTheme}`;
@@ -33,6 +36,11 @@ async function loadState() {
     if (lockBtn) {
       updateLockButton();
     }
+    
+    if (langBtn) {
+      updateLanguageButton();
+    }
+    
     renderQueries();
   }
 }
@@ -45,6 +53,73 @@ function updateLockButton() {
   } else {
     lockBtn.classList.remove('locked');
     lockBtn.title = 'Заблокировать тему';
+  }
+}
+
+// Обновление кнопки языка
+function updateLanguageButton() {
+  langBtn.textContent = currentLanguage;
+}
+
+// Переключение языка
+async function toggleLanguage() {
+  try {
+    currentLanguage = currentLanguage === 'RU' ? 'EN' : 'RU';
+    updateLanguageButton();
+    
+    console.log('toggleLanguage - start:', { currentLanguage, currentTheme });
+    
+    // Отправляем SET_LANGUAGE (без ожидания)
+    chrome.runtime.sendMessage({ 
+      type: 'SET_LANGUAGE', 
+      language: currentLanguage 
+    });
+    
+    console.log('SET_LANGUAGE sent');
+    
+    // Если есть текущая тема, переводим и перегенерируем запросы
+    if (currentTheme) {
+      console.log('Translating theme:', currentTheme);
+      
+      // Показываем индикацию загрузки
+      generateBtn.disabled = true;
+      updateGenerateButtonText('Генерация...');
+      statusDiv.textContent = 'Перевод темы и генерация запросов...';
+      statusDiv.style.color = '#6b7280';
+      
+      // Переводим тему на новый язык
+      const response = await chrome.runtime.sendMessage({ 
+        type: 'TRANSLATE_AND_GENERATE',
+        theme: currentTheme,
+        targetLanguage: currentLanguage,
+        keepLocked: isThemeLocked
+      });
+      
+      console.log('TRANSLATE_AND_GENERATE response:', response);
+      
+      if (response) {
+        currentQueries = response.queries;
+        currentTheme = response.theme;
+        themeHeader.textContent = `Тема: ${currentTheme}`;
+        renderQueries();
+        await checkJuneTab();
+        statusDiv.textContent = '✓ Запросы обновлены';
+      }
+      
+      // Возвращаем кнопку в нормальное состояние
+      generateBtn.disabled = false;
+      updateGenerateButtonText('Обновить запросы');
+    } else {
+      console.log('No current theme to translate');
+    }
+    
+    statusDiv.textContent = `Язык: ${currentLanguage === 'RU' ? 'Русский' : 'English'}`;
+    statusDiv.style.color = '#6b7280';
+    setTimeout(() => statusDiv.textContent = '', 2000);
+  } catch (error) {
+    console.error('toggleLanguage error:', error);
+    statusDiv.textContent = '✗ Ошибка переключения языка';
+    statusDiv.style.color = '#ef4444';
   }
 }
 
@@ -152,7 +227,10 @@ async function generateQueries() {
   statusDiv.textContent = 'Запрос отправлен, ждем ответа...';
   statusDiv.style.color = '#6b7280';
   
-  const result = await chrome.runtime.sendMessage({ type: 'GENERATE_QUERIES' });
+  const result = await chrome.runtime.sendMessage({ 
+    type: 'GENERATE_QUERIES',
+    language: currentLanguage 
+  });
   
   if (result) {
     currentQueries = result.queries;
@@ -407,6 +485,9 @@ chrome.runtime.onMessage.addListener((message) => {
     // Бот закончил отвечать - разблокируем кнопки
     isBotResponding = false;
     updateJuneButtons();
+  } else if (message.type === 'THEME_TRANSLATED') {
+    currentTheme = message.theme;
+    themeHeader.textContent = `Тема: ${currentTheme}`;
   }
 });
 
@@ -414,6 +495,7 @@ chrome.runtime.onMessage.addListener((message) => {
 generateBtn.addEventListener('click', generateQueries);
 automateBtn.addEventListener('click', automate);
 lockBtn.addEventListener('click', toggleThemeLock);
+langBtn.addEventListener('click', toggleLanguage);
 
 // Уведомляем background при закрытии панели
 window.addEventListener('beforeunload', () => {
@@ -430,6 +512,7 @@ async function init() {
     currentTheme = state.currentTheme || '';
     isAutomating = state.isAutomating || false;
     isThemeLocked = state.isThemeLocked || false;
+    currentLanguage = state.currentLanguage || 'RU';
     
     if (currentTheme) {
       themeHeader.textContent = `Тема: ${currentTheme}`;
@@ -437,6 +520,9 @@ async function init() {
     
     // Обновляем кнопку замка после загрузки состояния
     updateLockButton();
+    
+    // Обновляем кнопку языка после загрузки состояния
+    updateLanguageButton();
   }
   
   // Если список запросов пуст, генерируем автоматически

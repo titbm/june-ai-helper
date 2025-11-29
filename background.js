@@ -2,38 +2,89 @@
 const API_URL = 'https://june-ai-helper.vercel.app/api/generate';
 
 // Темы для случайной генерации
-const RANDOM_THEMES = [
-  // Русские темы
+const RANDOM_THEMES_RU = [
+  // Общие темы
   "квантовая физика", "искусственный интеллект", "космос и астрономия",
   "программирование", "психология", "история", "биология", "философия",
   "экономика", "литература", "музыка", "кино", "спорт", "кулинария",
   "путешествия", "технологии", "медицина", "экология", "математика",
   "архитектура", "дизайн", "маркетинг", "бизнес", "образование",
-  // Крипто и блокчейн темы (русский)
+  
+  // ИИ и нейросети
+  "ChatGPT", "Claude", "GPT-4", "GPT-4o", "o1", "Gemini", "Gemini Pro",
+  "Llama 3", "Mistral", "Mixtral", "Qwen", "DeepSeek", "Yi",
+  "Grok", "Perplexity", "Anthropic Claude", "OpenAI модели",
+  "Midjourney", "DALL-E 3", "Stable Diffusion", "Flux", "генерация изображений ИИ",
+  "Sora", "Runway", "Pika", "генерация видео ИИ",
+  "ElevenLabs", "генерация голоса ИИ", "клонирование голоса",
+  "промпт инжиниринг", "RAG системы", "fine-tuning моделей",
+  "LLM модели", "мультимодальные ИИ", "ИИ ассистенты",
+  "автоматизация с помощью ИИ", "ИИ в программировании", "GitHub Copilot",
+  "Cursor IDE", "Windsurf", "Replit Agent", "ИИ для кодинга",
+  "ИИ в дизайне", "ИИ в маркетинге", "ИИ в медицине",
+  "этика ИИ", "безопасность ИИ", "AGI", "alignment problem",
+  "галлюцинации в ИИ", "контекстное окно в LLM", "токены в LLM",
+  "open source ИИ модели", "локальные LLM", "Ollama", "LM Studio",
+  "ИИ агенты", "AutoGPT", "AgentGPT", "BabyAGI", "CrewAI",
+  "LangChain", "LangGraph", "LlamaIndex", "vector databases",
+  "Pinecone", "Weaviate", "Chroma", "Qdrant",
+  "embeddings", "semantic search", "ИИ для анализа данных",
+  "function calling", "tool use", "ReAct агенты", "chain of thought",
+  "multi-agent системы", "агентные фреймворки", "автономные агенты",
+  
+  // Культурные феномены
+  "стриминг культура", "подкасты", "TikTok тренды", "мемы и интернет-культура",
+  "инфлюенсеры", "блогинг", "YouTube экосистема", "Twitch стриминг",
+  "киберспорт и профессиональный гейминг", "аниме культура", "K-pop феномен",
+  "Netflix и стриминговые сервисы", "социальные сети", "цифровой детокс",
+  "удаленная работа", "цифровые кочевники", "коворкинги", "фриланс",
+  "поколение Z", "миллениалы", "выгорание", "work-life balance",
+  "осознанность и медитация", "ментальное здоровье", "психотерапия онлайн",
+  
+  // Политика и общество
+  "политическая система США", "демократия в США", "выборы в США",
+  "политическая система России", "федерализм", "разделение властей",
+  "избирательные системы", "политические партии", "популизм",
+  "геополитика", "международные санкции", "дипломатия",
+  "права человека", "свобода слова", "цензура в интернете",
+  "миграционная политика", "национализм", "глобализация",
+  "политическая поляризация", "фейковые новости", "пропаганда",
+  "гражданское общество", "протестные движения", "активизм",
+  
+  // Крипто и блокчейн
   "криптовалюты", "блокчейн", "Bitcoin", "Ethereum", "DeFi",
   "NFT", "смарт-контракты", "майнинг криптовалют", "стейкинг",
   "криптовалютные биржи", "холодные кошельки", "Web3", "DAO",
-  "токенизация активов", "Layer 2 решения", "криптовалютное регулирование",
+  "токенизация активов", "решения второго уровня", "криптовалютное регулирование",
+  "политика США по криптовалютам", "SEC и криптовалюты", "крипторегулирование в России",
+  "влияние политики на крипту", "криптовалюты и выборы", "лоббирование крипты",
+  "Трамп и криптовалюты", "Trump NFT", "крипто-политика Трампа",
+  "семья Трампа и крипта", "криптопроекты Трампа", "World Liberty Financial",
+  "Эрик Трамп и криптовалюты", "Дональд Трамп младший и крипта", "Бэррон Трамп и крипта",
+  "Мелания Трамп NFT", "криптоспекуляции семьи Трампа", "конфликт интересов Трампа",
+  "республиканцы и крипта", "демократы и крипта", "Байден и криптовалюты",
+  "центробанковые цифровые валюты", "запрет криптовалют", "криптовалютное законодательство",
   "трейдинг криптовалют", "технический анализ крипторынка", "фундаментальный анализ криптопроектов",
   "альткоины", "мемкоины", "стейблкоины", "криптовалютные деривативы",
   "фьючерсы на криптовалюты", "спотовая торговля", "маржинальная торговля",
-  "арбитраж криптовалют", "DCA стратегия", "HODL стратегия",
-  "риск-менеджмент в крипте", "диверсификация криптопортфеля",
-  "Solana экосистема", "Cardano", "Polkadot", "Avalanche", "Polygon",
+  "арбитраж криптовалют", "стратегия усреднения", "стратегия холдинга",
+  "управление рисками в крипте", "диверсификация криптопортфеля",
+  "экосистема Solana", "Cardano", "Polkadot", "Avalanche", "Polygon",
   "Binance Smart Chain", "Cosmos", "Chainlink", "Uniswap", "PancakeSwap",
-  "MetaMask кошелек", "Ledger", "Trezor", "Trust Wallet", "Phantom кошелек",
-  "криптовалютные налоги", "P2P обмен криптовалют", "atomic swaps",
-  "cross-chain мосты", "wrapped tokens", "yield farming", "liquidity mining",
-  "impermanent loss", "gas fees оптимизация", "MEV", "flash loans",
+  "кошелек MetaMask", "Ledger", "Trezor", "Trust Wallet", "кошелек Phantom",
+  "криптовалютные налоги", "пиринговый обмен криптовалют", "атомарные свопы",
+  "кросс-чейн мосты", "обернутые токены", "фарминг доходности", "майнинг ликвидности",
+  "непостоянные потери", "оптимизация комиссий", "MEV", "мгновенные кредиты",
   "криптовалютные индексы", "Bitcoin ETF", "институциональные инвестиции в крипту",
-  "криптовалютная безопасность", "seed фразы", "приватные ключи",
-  "2FA для крипты", "фишинг в крипте", "rug pull", "pump and dump",
-  "whitepaper анализ", "tokenomics", "vesting schedule", "airdrop стратегии",
-  "ICO vs IDO vs IEO", "launchpad платформы", "криптовалютные сигналы",
-  "on-chain анализ", "whale watching", "order book анализ",
-  "криптовалютные боты", "grid trading", "scalping криптовалют",
-  "swing trading крипты", "position trading", "dollar cost averaging",
-  // Другие темы (русский)
+  "криптовалютная безопасность", "сид-фразы", "приватные ключи",
+  "двухфакторная аутентификация", "фишинг в крипте", "скам-проекты", "памп и дамп",
+  "анализ технической документации", "токеномика", "график разблокировки токенов", "стратегии аирдропов",
+  "ICO vs IDO vs IEO", "платформы для запуска проектов", "криптовалютные сигналы",
+  "анализ блокчейна", "отслеживание китов", "анализ книги ордеров",
+  "криптовалютные боты", "сеточная торговля", "скальпинг криптовалют",
+  "свинг трейдинг крипты", "позиционная торговля", "усреднение стоимости",
+  
+  // Наука и технологии
   "нейронауки", "генетика", "робототехника", "квантовая механика",
   "виртуальная реальность", "дополненная реальность", "кибербезопасность",
   "машинное обучение", "большие данные", "облачные технологии", "интернет вещей",
@@ -41,44 +92,104 @@ const RANDOM_THEMES = [
   "климатические изменения", "устойчивое развитие", "урбанистика", "социология",
   "антропология", "политология", "международные отношения", "право",
   "этика", "логика", "эстетика", "религиоведение", "культурология",
+  "лингвистика", "семиотика", "риторика", "журналистика", "PR и коммуникации",
+  "реклама", "брендинг", "продуктовый дизайн", "UX/UI дизайн", "графический дизайн",
+  "фотография", "видеопродакшн", "анимация", "разработка игр", "киберспорт",
   "астрофизика", "теория струн", "темная материя", "черные дыры",
-  "CRISPR технологии", "стволовые клетки", "персонализированная медицина",
+  "технологии CRISPR", "стволовые клетки", "персонализированная медицина",
   "нейропластичность", "когнитивные науки", "поведенческая экономика",
   "геймификация", "EdTech", "FinTech", "HealthTech", "PropTech",
-  "электромобили", "автономные автомобили", "гиперлуп", "дроны",
-  "3D печать", "индустрия 4.0", "умные города", "цифровые двойники",
-  "edge computing", "5G технологии", "6G разработка", "квантовая криптография",
-  // Английские темы
+  "электромобили", "автономные автомобили", "Hyperloop", "технологии дронов",
+  "3D печать", "Индустрия 4.0", "умные города", "цифровые двойники",
+  "edge computing", "технологии 5G", "разработка 6G", "квантовая криптография"
+];
+
+const RANDOM_THEMES_EN = [
+  // General topics
   "quantum physics", "artificial intelligence", "space and astronomy",
   "programming", "psychology", "history", "biology", "philosophy",
   "economics", "literature", "music", "cinema", "sports", "cooking",
   "travel", "technology", "medicine", "ecology", "mathematics",
   "architecture", "design", "marketing", "business", "education",
-  // Крипто и блокчейн темы (английский)
-  "cryptocurrencies", "blockchain technology", "Bitcoin fundamentals", "Ethereum ecosystem", "DeFi protocols",
-  "NFT marketplace", "smart contracts", "crypto mining", "staking rewards",
-  "crypto exchanges", "cold wallets", "Web3 development", "DAO governance",
-  "asset tokenization", "Layer 2 scaling", "crypto regulation",
-  "cryptocurrency trading", "crypto technical analysis", "crypto fundamental analysis",
+  
+  // AI and neural networks
+  "ChatGPT", "Claude", "GPT-4", "GPT-4o", "o1", "Gemini", "Gemini Pro",
+  "Llama 3", "Mistral", "Mixtral", "Qwen", "DeepSeek", "Yi",
+  "Grok", "Perplexity", "Anthropic Claude", "OpenAI models",
+  "Midjourney", "DALL-E 3", "Stable Diffusion", "Flux", "AI image generation",
+  "Sora", "Runway", "Pika", "AI video generation",
+  "ElevenLabs", "AI voice generation", "voice cloning",
+  "prompt engineering", "RAG systems", "model fine-tuning",
+  "LLM models", "multimodal AI", "AI assistants",
+  "AI automation", "AI in programming", "GitHub Copilot",
+  "Cursor IDE", "Windsurf", "Replit Agent", "AI for coding",
+  "AI in design", "AI in marketing", "AI in medicine",
+  "AI ethics", "AI safety", "AGI", "alignment problem",
+  "AI hallucinations", "context window in LLM", "tokens in LLM",
+  "open source AI models", "local LLMs", "Ollama", "LM Studio",
+  "AI agents", "AutoGPT", "AgentGPT", "BabyAGI", "CrewAI",
+  "LangChain", "LangGraph", "LlamaIndex", "vector databases",
+  "Pinecone", "Weaviate", "Chroma", "Qdrant",
+  "embeddings", "semantic search", "AI for data analysis",
+  "function calling", "tool use", "ReAct agents", "chain of thought",
+  "multi-agent systems", "agent frameworks", "autonomous agents",
+  
+  // Cultural phenomena
+  "streaming culture", "podcasts", "TikTok trends", "memes and internet culture",
+  "influencers", "blogging", "YouTube ecosystem", "Twitch streaming",
+  "esports and professional gaming", "anime culture", "K-pop phenomenon",
+  "Netflix and streaming services", "social media", "digital detox",
+  "remote work", "digital nomads", "coworking spaces", "freelancing",
+  "Generation Z", "millennials", "burnout", "work-life balance",
+  "mindfulness and meditation", "mental health", "online therapy",
+  
+  // Politics and society
+  "US political system", "democracy in USA", "US elections",
+  "Russian political system", "federalism", "separation of powers",
+  "electoral systems", "political parties", "populism",
+  "geopolitics", "international sanctions", "diplomacy",
+  "human rights", "freedom of speech", "internet censorship",
+  "immigration policy", "nationalism", "globalization",
+  "political polarization", "fake news", "propaganda",
+  "civil society", "protest movements", "activism",
+  
+  // Crypto and blockchain
+  "cryptocurrencies", "blockchain", "Bitcoin", "Ethereum", "DeFi",
+  "NFT", "smart contracts", "crypto mining", "staking",
+  "crypto exchanges", "cold wallets", "Web3", "DAO",
+  "asset tokenization", "layer 2 solutions", "crypto regulation",
+  "US crypto policy", "SEC and cryptocurrencies", "crypto regulation in Russia",
+  "politics impact on crypto", "cryptocurrencies and elections", "crypto lobbying",
+  "Trump and cryptocurrencies", "Trump NFT", "Trump crypto policy",
+  "Trump family and crypto", "Trump crypto projects", "World Liberty Financial",
+  "Eric Trump and cryptocurrencies", "Donald Trump Jr and crypto", "Barron Trump and crypto",
+  "Melania Trump NFT", "Trump family crypto speculation", "Trump conflict of interest",
+  "Republicans and crypto", "Democrats and crypto", "Biden and cryptocurrencies",
+  "central bank digital currencies", "crypto bans", "cryptocurrency legislation",
+  "crypto trading", "crypto technical analysis", "crypto fundamental analysis",
   "altcoins", "memecoins", "stablecoins", "crypto derivatives",
-  "crypto futures trading", "spot trading", "margin trading",
-  "crypto arbitrage", "DCA strategy", "HODL strategy",
-  "crypto risk management", "portfolio diversification",
-  "Solana ecosystem", "Cardano blockchain", "Polkadot parachains", "Avalanche subnets", "Polygon zkEVM",
-  "Binance Smart Chain", "Cosmos IBC", "Chainlink oracles", "Uniswap V4", "PancakeSwap",
-  "MetaMask wallet", "Ledger hardware wallet", "Trezor security", "Trust Wallet", "Phantom wallet",
-  "crypto taxes", "P2P crypto exchange", "atomic swaps", "cross-chain bridges", "wrapped tokens",
-  "yield farming strategies", "liquidity mining", "impermanent loss", "gas optimization", "MEV bots",
-  "flash loans", "crypto indexes", "Bitcoin ETF", "institutional crypto", "crypto security",
-  "seed phrases", "private keys", "2FA crypto", "phishing attacks", "rug pulls",
-  "pump and dump schemes", "whitepaper analysis", "tokenomics design", "vesting schedules",
-  "airdrop hunting", "ICO vs IDO", "launchpad platforms", "crypto signals", "on-chain analysis",
-  "whale tracking", "order book depth", "trading bots", "grid trading", "crypto scalping",
-  "swing trading crypto", "position trading", "dollar cost averaging crypto",
-  // Другие темы (английский)
+  "crypto futures", "spot trading", "margin trading",
+  "crypto arbitrage", "averaging strategy", "holding strategy",
+  "risk management in crypto", "crypto portfolio diversification",
+  "Solana ecosystem", "Cardano", "Polkadot", "Avalanche", "Polygon",
+  "Binance Smart Chain", "Cosmos", "Chainlink", "Uniswap", "PancakeSwap",
+  "MetaMask wallet", "Ledger", "Trezor", "Trust Wallet", "Phantom wallet",
+  "crypto taxes", "P2P crypto exchange", "atomic swaps",
+  "cross-chain bridges", "wrapped tokens", "yield farming", "liquidity mining",
+  "impermanent loss", "fee optimization", "MEV", "flash loans",
+  "crypto indexes", "Bitcoin ETF", "institutional crypto investments",
+  "crypto security", "seed phrases", "private keys",
+  "two-factor authentication", "crypto phishing", "scam projects", "pump and dump",
+  "whitepaper analysis", "tokenomics", "token unlock schedule", "airdrop strategies",
+  "ICO vs IDO vs IEO", "project launch platforms", "crypto signals",
+  "blockchain analysis", "whale tracking", "order book analysis",
+  "crypto bots", "grid trading", "crypto scalping",
+  "swing trading crypto", "position trading", "cost averaging",
+  
+  // Science and technology
   "neuroscience", "genetics", "robotics", "quantum mechanics",
   "virtual reality", "augmented reality", "cybersecurity",
-  "machine learning", "big data", "cloud computing", "internet of things",
+  "machine learning", "big data", "cloud technologies", "internet of things",
   "quantum computing", "nanotechnology", "biotechnology", "renewable energy",
   "climate change", "sustainable development", "urban planning", "sociology",
   "anthropology", "political science", "international relations", "law",
@@ -90,9 +201,9 @@ const RANDOM_THEMES = [
   "CRISPR technology", "stem cells", "personalized medicine",
   "neuroplasticity", "cognitive science", "behavioral economics",
   "gamification", "EdTech", "FinTech", "HealthTech", "PropTech",
-  "electric vehicles", "autonomous cars", "hyperloop", "drone technology",
+  "electric vehicles", "autonomous vehicles", "Hyperloop", "drone technology",
   "3D printing", "Industry 4.0", "smart cities", "digital twins",
-  "edge computing", "5G networks", "6G development", "quantum cryptography"
+  "edge computing", "5G technology", "6G development", "quantum cryptography"
 ];
 
 // Глобальное состояние
@@ -100,6 +211,7 @@ let currentQueries = [];
 let currentTheme = '';
 let isAutomating = false;
 let isThemeLocked = false;
+let currentLanguage = 'RU'; // Язык генерации запросов
 
 // Очистка storage при установке/обновлении расширения
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -178,10 +290,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     checkActiveTab().then(sendResponse);
     return true;
   } else if (message.type === 'GET_STATE') {
-    sendResponse({ currentQueries, currentTheme, isAutomating, isThemeLocked });
+    sendResponse({ currentQueries, currentTheme, isAutomating, isThemeLocked, currentLanguage });
     return true;
   } else if (message.type === 'GENERATE_QUERIES') {
-    generateQueries().then(sendResponse);
+    generateQueries(message.language).then(sendResponse);
     return true;
   } else if (message.type === 'SEND_TO_JUNE') {
     handleSendToJune(message.query).then(sendResponse);
@@ -212,11 +324,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.tab) {
       sidePanelState.set(sender.tab.windowId, true);
     }
-    sendResponse({ currentQueries, currentTheme, isAutomating, isThemeLocked });
+    sendResponse({ currentQueries, currentTheme, isAutomating, isThemeLocked, currentLanguage });
     return true;
   } else if (message.type === 'SET_THEME_LOCK') {
     isThemeLocked = message.locked;
     saveState();
+    return true;
+  } else if (message.type === 'SET_LANGUAGE') {
+    currentLanguage = message.language;
+    saveState();
+    return true;
+  } else if (message.type === 'TRANSLATE_THEME') {
+    const translatedTheme = translateTheme(message.theme, message.targetLanguage);
+    currentTheme = translatedTheme;
+    console.log('Theme translated and saved:', currentTheme);
+    saveState();
+    sendResponse({ translatedTheme });
+    return true;
+  } else if (message.type === 'TRANSLATE_AND_GENERATE') {
+    // Переводим тему
+    const translatedTheme = translateTheme(message.theme, message.targetLanguage);
+    currentTheme = translatedTheme;
+    currentLanguage = message.targetLanguage;
+    
+    // Временно блокируем тему для генерации
+    isThemeLocked = true;
+    
+    // Генерируем запросы с переведенной темой
+    generateQueries(currentLanguage).then(result => {
+      // Восстанавливаем состояние блокировки
+      isThemeLocked = message.keepLocked;
+      saveState();
+      sendResponse(result);
+    });
+    
     return true;
   } else if (message.type === 'SIDEPANEL_CLOSED') {
     // Sidepanel сообщает, что закрылась
@@ -264,13 +405,14 @@ async function saveState() {
     currentQueries,
     currentTheme,
     isAutomating,
-    isThemeLocked
+    isThemeLocked,
+    currentLanguage
   });
 }
 
 // Загрузка состояния
 async function loadState() {
-  const data = await chrome.storage.local.get(['currentQueries', 'currentTheme', 'isAutomating', 'isThemeLocked']);
+  const data = await chrome.storage.local.get(['currentQueries', 'currentTheme', 'isAutomating', 'isThemeLocked', 'currentLanguage']);
   if (data.currentQueries) {
     currentQueries = data.currentQueries;
   }
@@ -283,20 +425,54 @@ async function loadState() {
   if (data.isThemeLocked !== undefined) {
     isThemeLocked = data.isThemeLocked;
   }
+  if (data.currentLanguage) {
+    currentLanguage = data.currentLanguage;
+  }
 }
 
 // Генерация случайной темы
-function getRandomTheme() {
-  return RANDOM_THEMES[Math.floor(Math.random() * RANDOM_THEMES.length)];
+function getRandomTheme(language = 'RU') {
+  const themes = language === 'EN' ? RANDOM_THEMES_EN : RANDOM_THEMES_RU;
+  return themes[Math.floor(Math.random() * themes.length)];
+}
+
+// Перевод темы на другой язык
+function translateTheme(theme, targetLanguage) {
+  // Убираем лишние пробелы
+  const cleanTheme = theme.trim();
+  
+  const ruIndex = RANDOM_THEMES_RU.indexOf(cleanTheme);
+  const enIndex = RANDOM_THEMES_EN.indexOf(cleanTheme);
+  
+  console.log('translateTheme:', { 
+    originalTheme: theme,
+    cleanTheme, 
+    targetLanguage, 
+    ruIndex, 
+    enIndex
+  });
+  
+  if (targetLanguage === 'EN' && ruIndex !== -1) {
+    const translated = RANDOM_THEMES_EN[ruIndex];
+    console.log('Translated RU->EN:', cleanTheme, '->', translated);
+    return translated;
+  } else if (targetLanguage === 'RU' && enIndex !== -1) {
+    const translated = RANDOM_THEMES_RU[enIndex];
+    console.log('Translated EN->RU:', cleanTheme, '->', translated);
+    return translated;
+  }
+  
+  console.log('No translation found, returning original:', cleanTheme);
+  return cleanTheme;
 }
 
 // Генерация через Gemini API
-async function generateQueriesWithAI(theme) {
+async function generateQueriesWithAI(theme, language = 'RU') {
   notifySidepanel(null, { type: 'GENERATING' });
   
-  const isEnglish = /^[a-zA-Z\s]+$/.test(theme);
+  const useEnglish = language === 'EN';
   
-  const prompt = isEnglish 
+  const prompt = useEnglish 
     ? `Generate exactly 10 diverse, casual questions about "${theme}" that a curious person would ask. Make them VERY DIFFERENT from each other:
 - Mix question types: "what", "how", "why", "when", "where", "who", "can", "should", "is it true"
 - Vary the style: some basic, some specific, some practical, some philosophical, some controversial
@@ -360,29 +536,49 @@ One question per line, no numbering.`
 }
 
 // Генерация запросов
-async function generateQueries() {
+async function generateQueries(language) {
+  // Обновляем язык, если передан
+  if (language) {
+    currentLanguage = language;
+  }
+  
   // Если тема заблокирована, используем текущую тему
-  const theme = isThemeLocked && currentTheme ? currentTheme : getRandomTheme();
+  const theme = isThemeLocked && currentTheme ? currentTheme : getRandomTheme(currentLanguage);
   currentTheme = theme;
   
-  const aiQueries = await generateQueriesWithAI(theme);
+  const aiQueries = await generateQueriesWithAI(theme, currentLanguage);
   
   if (aiQueries && aiQueries.length >= 8) {
     currentQueries = aiQueries;
   } else {
     // Фолбэк - генерируем простые вопросы
-    currentQueries = [
-      "Что такое " + theme + "?",
-      "Как работает " + theme + "?",
-      "Расскажи подробнее про " + theme,
-      "какие есть примеры " + theme,
-      "Зачем нужен " + theme + "?",
-      "История развития " + theme,
-      "Преимущества и недостатки " + theme,
-      "Будущее " + theme,
-      "как начать изучать " + theme,
-      "Лучшие ресурсы по " + theme
-    ];
+    if (currentLanguage === 'EN') {
+      currentQueries = [
+        "What is " + theme + "?",
+        "How does " + theme + " work?",
+        "Tell me more about " + theme,
+        "what are examples of " + theme,
+        "Why do we need " + theme + "?",
+        "History of " + theme,
+        "Advantages and disadvantages of " + theme,
+        "Future of " + theme,
+        "how to start learning " + theme,
+        "Best resources about " + theme
+      ];
+    } else {
+      currentQueries = [
+        "Что такое " + theme + "?",
+        "Как работает " + theme + "?",
+        "Расскажи подробнее про " + theme,
+        "какие есть примеры " + theme,
+        "Зачем нужен " + theme + "?",
+        "История развития " + theme,
+        "Преимущества и недостатки " + theme,
+        "Будущее " + theme,
+        "как начать изучать " + theme,
+        "Лучшие ресурсы по " + theme
+      ];
+    }
   }
   
   await saveState();

@@ -27,10 +27,16 @@ button {
   position: relative;
 }
 
-.lock-btn {
+.header-controls {
   position: absolute;
   top: 20px;
   right: 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.lang-btn {
   width: 36px;
   height: 36px;
   padding: 0;
@@ -43,7 +49,29 @@ button {
   justify-content: center;
   transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   color: rgb(43, 50, 51);
-  z-index: 10;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.lang-btn:hover {
+  background: rgb(230, 248, 250);
+  color: rgb(8, 71, 76);
+  border-color: rgb(187, 200, 201);
+}
+
+.lock-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: rgb(255, 255, 255);
+  border: 1px solid rgb(187, 200, 201);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  color: rgb(43, 50, 51);
 }
 
 .lock-btn svg {
@@ -70,7 +98,7 @@ button {
 
 .theme-header {
   margin-bottom: 20px;
-  margin-right: 40px;
+  margin-right: 90px;
   font-size: 18px;
   font-weight: 600;
   color: #1a1a1a;
