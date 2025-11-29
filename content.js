@@ -284,6 +284,16 @@ async function renameChat(theme) {
   try {
     await new Promise(resolve => setTimeout(resolve, 500));
     
+    // Открываем сайдбар только на узких экранах
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      const hamburgerBtn = document.querySelector('button[data-sidebar="trigger"]');
+      if (hamburgerBtn) {
+        hamburgerBtn.click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    
     const chatOptionsBtn = document.querySelector('button[aria-label="Chat item options"]');
     if (!chatOptionsBtn) {
       return { success: false, error: 'Chat options button not found' };
@@ -324,8 +334,21 @@ async function renameChat(theme) {
     renameMenuItem.click();
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    const dialog = document.querySelector('[role="dialog"]');
+    // Ищем диалог переименования (не сайдбар)
+    const dialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
+    const dialog = dialogs.find(d => {
+      const hasInput = d.querySelector('input[type="text"]') || d.querySelector('input[placeholder*="title"]') || d.querySelector('input[placeholder*="name"]');
+      return hasInput && !d.hasAttribute('data-sidebar');
+    });
+    
     if (!dialog) return { success: false, error: 'Rename dialog not found' };
+    
+    // Убираем фокус с текущего элемента (кнопки в сайдбаре)
+    if (document.activeElement) {
+      document.activeElement.blur();
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     const renameInput = dialog.querySelector('input[type="text"]') || dialog.querySelector('input');
     if (!renameInput) return { success: false, error: 'Rename input not found' };
@@ -340,12 +363,33 @@ async function renameChat(theme) {
     
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    const saveBtn = Array.from(dialog.querySelectorAll('button')).find(btn => btn.textContent.includes('Save'));
+    // Ищем кнопку Save разными способами
+    let saveBtn = Array.from(dialog.querySelectorAll('button')).find(btn => 
+      btn.textContent.trim().toLowerCase() === 'save' || 
+      btn.textContent.includes('Save')
+    );
+    
+    // Если не нашли по тексту, пробуем по позиции (последняя кнопка обычно Save)
+    if (!saveBtn) {
+      const buttons = Array.from(dialog.querySelectorAll('button'));
+      saveBtn = buttons[buttons.length - 1];
+    }
     
     if (saveBtn) {
       saveBtn.click();
     } else {
+      // Если кнопка не найдена, отправляем Enter
       renameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Закрываем сайдбар только на узких экранах
+    if (isMobile) {
+      const closeSidebarBtn = document.querySelector('button[data-sidebar="trigger"]');
+      if (closeSidebarBtn) {
+        closeSidebarBtn.click();
+      }
     }
     
     return { success: true };
