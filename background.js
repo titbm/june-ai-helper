@@ -206,14 +206,12 @@ const RANDOM_THEMES_EN = [
   "edge computing", "5G technology", "6G development", "quantum cryptography"
 ];
 
-// Глобальное состояние
 let currentQueries = [];
 let currentTheme = '';
 let isAutomating = false;
 let isThemeLocked = false;
-let currentLanguage = 'RU'; // Язык генерации запросов
+let currentLanguage = 'RU';
 
-// Очистка storage при установке/обновлении расширения
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install' || details.reason === 'update') {
     await chrome.storage.local.clear();
@@ -221,42 +219,32 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   await loadState();
 });
 
-// Загрузка состояния при старте
 loadState();
 
-// Отслеживание состояния панели для каждого окна
 const sidePanelState = new Map();
-
-// Переключение боковой панели (открытие/закрытие)
 chrome.action.onClicked.addListener(async (tab) => {
   const windowId = tab.windowId;
   const isOpen = sidePanelState.get(windowId);
   
   if (isOpen) {
-    // Панель открыта - отправляем команду на закрытие
     chrome.runtime.sendMessage({ type: 'CLOSE_SIDEPANEL' }).catch(() => {});
     sidePanelState.set(windowId, false);
   } else {
-    // Панель закрыта - открываем
     await chrome.sidePanel.open({ windowId });
     sidePanelState.set(windowId, true);
   }
 });
-
-// Слушаем переключение вкладок
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   const tab = await chrome.tabs.get(activeInfo.tabId);
   notifySidepanel(tab);
 });
 
-// Слушаем обновление URL вкладки
 chrome.tabs.onUpdated.addListener((_, changeInfo, tab) => {
   if (changeInfo.url && tab.active) {
     notifySidepanel(tab);
   }
 });
 
-// Уведомляем sidepanel об изменении активной вкладки или других событиях
 function notifySidepanel(tab, customMessage) {
   if (customMessage) {
     chrome.runtime.sendMessage(customMessage).catch(() => {});
@@ -271,11 +259,10 @@ function notifySidepanel(tab, customMessage) {
   }).catch(() => {});
 }
 
-// Флаг для остановки автоматизации
 let shouldStopAutomation = false;
 let currentAutomationTabId = null;
+let shouldRenameNextMessage = false;
 
-// Остановка печати в активной вкладке
 async function stopTypingInTab() {
   if (currentAutomationTabId) {
     try {
@@ -284,7 +271,24 @@ async function stopTypingInTab() {
   }
 }
 
-// Обработка сообщений
+async function stopAutomation(tabId = currentAutomationTabId) {
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'STOP_AUTOMATION' });
+  } catch {}
+  
+  let isBotResponding = false;
+  try {
+    const botCheck = await chrome.tabs.sendMessage(tabId, { type: 'CHECK_BOT_RESPONDING' });
+    isBotResponding = botCheck && botCheck.isBotResponding;
+  } catch {}
+  
+  notifySidepanel(null, { type: 'AUTOMATION_STOPPED', isBotResponding });
+  shouldStopAutomation = false;
+  isAutomating = false;
+  currentAutomationTabId = null;
+  await saveState();
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'CHECK_ACTIVE_TAB') {
     checkActiveTab().then(sendResponse);
@@ -313,20 +317,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'STOP_AUTOMATION') {
     shouldStopAutomation = true;
     stopTypingInTab();
-  } else if (message.type === 'BOT_RESPONSE_COMPLETE') {
-    // Уведомляем sidepanel что бот закончил отвечать
-    notifySidepanel(null, { type: 'BOT_RESPONSE_COMPLETE' });
   } else if (message.type === 'MESSAGE_SUBMITTED') {
-    // Сообщение отправлено - можно переименовывать чат
-    // Здесь можно добавить логику переименования, если нужно
+    if (shouldRenameNextMessage && currentTheme && currentAutomationTabId) {
+      shouldRenameNextMessage = false;
+      const tabId = currentAutomationTabId;
+      setTimeout(async () => {
+        try {
+          await chrome.tabs.sendMessage(tabId, {
+            type: 'RENAME_CHAT',
+            theme: currentTheme
+          });
+        } catch (error) {
+          console.log('Failed to rename:', error);
+        }
+      }, 500);
+    }
   } else if (message.type === 'BOT_STARTED') {
-    // Бот начал отвечать - блокируем кнопки
     notifySidepanel(null, { type: 'BOT_STARTED' });
   } else if (message.type === 'BOT_FINISHED') {
-    // Бот закончил отвечать - разблокируем кнопки
     notifySidepanel(null, { type: 'BOT_FINISHED' });
   } else if (message.type === 'SIDEPANEL_OPENED') {
-    // Sidepanel сообщает, что открылась - отправляем текущее состояние
     if (sender.tab) {
       sidePanelState.set(sender.tab.windowId, true);
     }
@@ -340,25 +350,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     currentLanguage = message.language;
     saveState();
     return true;
-  } else if (message.type === 'TRANSLATE_THEME') {
-    const translatedTheme = translateTheme(message.theme, message.targetLanguage);
-    currentTheme = translatedTheme;
-    console.log('Theme translated and saved:', currentTheme);
-    saveState();
-    sendResponse({ translatedTheme });
-    return true;
   } else if (message.type === 'TRANSLATE_AND_GENERATE') {
-    // Переводим тему
     const translatedTheme = translateTheme(message.theme, message.targetLanguage);
     currentTheme = translatedTheme;
     currentLanguage = message.targetLanguage;
-    
-    // Временно блокируем тему для генерации
     isThemeLocked = true;
     
-    // Генерируем запросы с переведенной темой
     generateQueries(currentLanguage).then(result => {
-      // Восстанавливаем состояние блокировки
       isThemeLocked = message.keepLocked;
       saveState();
       sendResponse(result);
@@ -366,14 +364,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     
     return true;
   } else if (message.type === 'SIDEPANEL_CLOSED') {
-    // Sidepanel сообщает, что закрылась
     if (sender.tab) {
       sidePanelState.set(sender.tab.windowId, false);
     }
   }
 });
 
-// Проверка активной вкладки
 async function checkActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const isJune = tab && tab.url && tab.url.includes('askjune.ai');
@@ -381,59 +377,37 @@ async function checkActiveTab() {
 }
 
 async function handleSendToJune(query) {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  
-  if (!tab || !tab.url || !tab.url.includes('askjune.ai')) {
+  const { isJune } = await checkActiveTab();
+  if (!isJune) {
     return { success: false, error: 'Активная вкладка не June AI' };
   }
   
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  
   try {
-    // Проверяем, пустой ли чат ПЕРЕД отправкой
     let isNewChat = false;
     try {
-      const checkResponse = await chrome.tabs.sendMessage(tab.id, { 
-        type: 'CHECK_CHAT_HAS_MESSAGES' 
-      });
+      const checkResponse = await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_CHAT_HAS_MESSAGES' });
       isNewChat = checkResponse && !checkResponse.hasMessages;
-      console.log('Chat check before send:', { hasMessages: checkResponse?.hasMessages, isNewChat });
-    } catch (error) {
-      console.log('Failed to check chat:', error);
-    }
+    } catch {}
     
-    // Останавливаем текущий ввод (если идет) и очищаем textarea
     await chrome.tabs.sendMessage(tab.id, { type: 'CLEAR_AND_STOP' }).catch(() => {});
-    
-    // Небольшая задержка для обработки остановки
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    // insertAndSubmit сам дождется когда можно начинать ввод
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      type: 'INSERT_AND_SUBMIT',
-      text: query
-    });
-    
-    // Если процесс был остановлен, не считаем это ошибкой
-    if (response && response.stopped) {
-      return { success: false, stopped: true };
+    if (isNewChat && currentTheme) {
+      shouldRenameNextMessage = true;
+      currentAutomationTabId = tab.id;
     }
     
-    // Если это был новый чат, переименовываем СРАЗУ, не дожидаясь ответа
-    if (isNewChat && currentTheme) {
-      chrome.tabs.sendMessage(tab.id, {
-        type: 'RENAME_CHAT',
-        theme: currentTheme
-      }).then(result => {
-        console.log('Rename result:', result);
-      }).catch(error => {
-        console.log('Failed to rename chat:', error);
-      });
-    } else {
-      console.log('Skipping rename:', { isNewChat, hasTheme: !!currentTheme, theme: currentTheme });
+    const response = await chrome.tabs.sendMessage(tab.id, { type: 'INSERT_AND_SUBMIT', text: query });
+    
+    if (response && response.stopped) {
+      shouldRenameNextMessage = false;
+      return { success: false, stopped: true };
     }
     
     return response || { success: true };
   } catch (error) {
-    // Игнорируем ошибки связанные с прерыванием
     if (error.message && error.message.includes('message port closed')) {
       return { success: false, stopped: true };
     }
@@ -441,7 +415,6 @@ async function handleSendToJune(query) {
   }
 }
 
-// Сохранение состояния
 async function saveState() {
   await chrome.storage.local.set({
     currentQueries,
@@ -452,7 +425,6 @@ async function saveState() {
   });
 }
 
-// Загрузка состояния
 async function loadState() {
   const data = await chrome.storage.local.get(['currentQueries', 'currentTheme', 'isAutomating', 'isThemeLocked', 'currentLanguage']);
   if (data.currentQueries) {
@@ -472,43 +444,26 @@ async function loadState() {
   }
 }
 
-// Генерация случайной темы
 function getRandomTheme(language = 'RU') {
   const themes = language === 'EN' ? RANDOM_THEMES_EN : RANDOM_THEMES_RU;
   return themes[Math.floor(Math.random() * themes.length)];
 }
 
-// Перевод темы на другой язык
 function translateTheme(theme, targetLanguage) {
-  // Убираем лишние пробелы
   const cleanTheme = theme.trim();
   
   const ruIndex = RANDOM_THEMES_RU.indexOf(cleanTheme);
   const enIndex = RANDOM_THEMES_EN.indexOf(cleanTheme);
   
-  console.log('translateTheme:', { 
-    originalTheme: theme,
-    cleanTheme, 
-    targetLanguage, 
-    ruIndex, 
-    enIndex
-  });
-  
   if (targetLanguage === 'EN' && ruIndex !== -1) {
-    const translated = RANDOM_THEMES_EN[ruIndex];
-    console.log('Translated RU->EN:', cleanTheme, '->', translated);
-    return translated;
+    return RANDOM_THEMES_EN[ruIndex];
   } else if (targetLanguage === 'RU' && enIndex !== -1) {
-    const translated = RANDOM_THEMES_RU[enIndex];
-    console.log('Translated EN->RU:', cleanTheme, '->', translated);
-    return translated;
+    return RANDOM_THEMES_RU[enIndex];
   }
   
-  console.log('No translation found, returning original:', cleanTheme);
   return cleanTheme;
 }
 
-// Генерация через Gemini API
 async function generateQueriesWithAI(theme, language = 'RU') {
   notifySidepanel(null, { type: 'GENERATING' });
   
@@ -577,14 +532,11 @@ One question per line, no numbering.`
   }
 }
 
-// Генерация запросов
 async function generateQueries(language) {
-  // Обновляем язык, если передан
   if (language) {
     currentLanguage = language;
   }
   
-  // Если тема заблокирована, используем текущую тему
   const theme = isThemeLocked && currentTheme ? currentTheme : getRandomTheme(currentLanguage);
   currentTheme = theme;
   
@@ -593,7 +545,6 @@ async function generateQueries(language) {
   if (aiQueries && aiQueries.length >= 8) {
     currentQueries = aiQueries;
   } else {
-    // Фолбэк - генерируем простые вопросы
     if (currentLanguage === 'EN') {
       currentQueries = [
         "What is " + theme + "?",
@@ -664,24 +615,8 @@ async function handleAutomate() {
         type: 'SHOW_CHAT_CHOICE_DIALOG' 
       });
       
-      // Если диалог был отменен (закрыт через STOP), останавливаем автоматизацию
       if (choiceResponse && choiceResponse.choice === 'cancelled') {
-        try {
-          await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
-        } catch {}
-        
-        // Проверяем, отвечает ли бот
-        let isBotResponding = false;
-        try {
-          const botCheck = await chrome.tabs.sendMessage(automationTabId, { type: 'CHECK_BOT_RESPONDING' });
-          isBotResponding = botCheck && botCheck.isBotResponding;
-        } catch {}
-        
-        notifySidepanel(null, { type: 'AUTOMATION_STOPPED', isBotResponding });
-        shouldStopAutomation = false;
-        isAutomating = false;
-        currentAutomationTabId = null;
-        await saveState();
+        await stopAutomation(automationTabId);
         return;
       }
       
@@ -690,35 +625,14 @@ async function handleAutomate() {
       }
     }
   } catch (error) {
-    // Если была остановка, выходим
     if (shouldStopAutomation) {
-      try {
-        await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
-      } catch {}
-      
-      // Проверяем, отвечает ли бот
-      let isBotResponding = false;
-      try {
-        const botCheck = await chrome.tabs.sendMessage(automationTabId, { type: 'CHECK_BOT_RESPONDING' });
-        isBotResponding = botCheck && botCheck.isBotResponding;
-      } catch {}
-      
-      notifySidepanel(null, { type: 'AUTOMATION_STOPPED', isBotResponding });
-      shouldStopAutomation = false;
-      isAutomating = false;
-      currentAutomationTabId = null;
-      await saveState();
+      await stopAutomation(automationTabId);
       return;
     }
   }
   
-  // Проверяем еще раз перед созданием overlay
   if (shouldStopAutomation) {
-    notifySidepanel(null, { type: 'AUTOMATION_STOPPED' });
-    shouldStopAutomation = false;
-    isAutomating = false;
-    currentAutomationTabId = null;
-    await saveState();
+    await stopAutomation(automationTabId);
     return;
   }
   
@@ -736,17 +650,14 @@ async function handleAutomate() {
   }
 
   // Отправляем запросы
-  let isFirstMessage = shouldCreateNewChat; // Флаг для переименования после первого сообщения
+  // Если это новый чат, устанавливаем флаг для переименования первого сообщения
+  if (shouldCreateNewChat && currentTheme) {
+    shouldRenameNextMessage = true;
+  }
   
   for (let i = 0; i < currentQueries.length; i++) {
     if (shouldStopAutomation) {
-      try {
-        await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
-      } catch {}
-      notifySidepanel(null, { type: 'AUTOMATION_STOPPED' });
-      shouldStopAutomation = false;
-      isAutomating = false;
-      await saveState();
+      await stopAutomation(automationTabId);
       return;
     }
     
@@ -759,64 +670,16 @@ async function handleAutomate() {
       });
       
       if (response && response.stopped) {
-        try {
-          await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
-        } catch {}
-        
-        // Проверяем, отвечает ли бот
-        let isBotResponding = false;
-        try {
-          const botCheck = await chrome.tabs.sendMessage(automationTabId, { type: 'CHECK_BOT_RESPONDING' });
-          isBotResponding = botCheck && botCheck.isBotResponding;
-        } catch {}
-        
-        notifySidepanel(null, { type: 'AUTOMATION_STOPPED', isBotResponding });
-        shouldStopAutomation = false;
-        isAutomating = false;
-        currentAutomationTabId = null;
-        await saveState();
+        await stopAutomation(automationTabId);
         return;
       }
       
-      // Если это первое сообщение в новом чате, переименовываем чат под тему
-      if (isFirstMessage && response && response.success) {
-        isFirstMessage = false;
-        // Запускаем переименование асинхронно, не блокируя автоматизацию
-        (async () => {
-          try {
-            console.log('Renaming chat to theme (automation):', currentTheme);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const renameResult = await chrome.tabs.sendMessage(automationTabId, {
-              type: 'RENAME_CHAT',
-              theme: currentTheme
-            });
-            console.log('Rename result (automation):', renameResult);
-          } catch (error) {
-            console.log('Failed to rename chat (automation):', error);
-          }
-        })();
-      }
-      
+      // Задержка перед следующим вопросом (6-10 секунд)
       const delay = Math.random() * 4000 + 6000;
       const startTime = Date.now();
       while (Date.now() - startTime < delay) {
         if (shouldStopAutomation) {
-          try {
-            await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
-          } catch {}
-          
-          // Проверяем, отвечает ли бот
-          let isBotResponding = false;
-          try {
-            const botCheck = await chrome.tabs.sendMessage(automationTabId, { type: 'CHECK_BOT_RESPONDING' });
-            isBotResponding = botCheck && botCheck.isBotResponding;
-          } catch {}
-          
-          notifySidepanel(null, { type: 'AUTOMATION_STOPPED', isBotResponding });
-          shouldStopAutomation = false;
-          isAutomating = false;
-          currentAutomationTabId = null;
-          await saveState();
+          await stopAutomation(automationTabId);
           return;
         }
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -824,7 +687,6 @@ async function handleAutomate() {
     } catch {}
   }
 
-  // Удаляем overlay после завершения
   try {
     await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
   } catch {}

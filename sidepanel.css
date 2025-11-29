@@ -36,33 +36,7 @@ button {
   z-index: 10;
 }
 
-.lang-btn {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: rgb(255, 255, 255);
-  border: 1px solid rgb(187, 200, 201);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  color: rgb(43, 50, 51);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.lang-btn:hover:not(:disabled) {
-  background: rgb(230, 248, 250);
-  color: rgb(8, 71, 76);
-  border-color: rgb(187, 200, 201);
-}
-
-.lang-btn:disabled {
-  cursor: not-allowed;
-}
-
+.lang-btn,
 .lock-btn {
   width: 36px;
   height: 36px;
@@ -78,17 +52,24 @@ button {
   cursor: pointer;
 }
 
+.lang-btn {
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .lock-btn svg {
   width: 18px;
   height: 18px;
 }
 
+.lang-btn:hover:not(:disabled),
 .lock-btn:hover:not(:disabled) {
   background: rgb(230, 248, 250);
   color: rgb(8, 71, 76);
   border-color: rgb(187, 200, 201);
 }
 
+.lang-btn:disabled,
 .lock-btn:disabled {
   cursor: not-allowed;
 }
@@ -102,10 +83,6 @@ button {
 .lock-btn.locked:hover:not(:disabled) {
   background: #06393d;
   border-color: #06393d;
-}
-
-.lock-btn.locked:disabled {
-  cursor: not-allowed;
 }
 
 .theme-header {
@@ -144,14 +121,6 @@ button {
 
 .btn-primary:hover svg {
   transform: scale(1.1) rotate(15deg);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: rgb(8, 71, 76);
-}
-
-.btn-primary:active:not(:disabled) {
-  background: rgb(8, 71, 76);
 }
 
 .btn-primary:disabled {
@@ -224,6 +193,7 @@ button {
 .june-btn:hover:not(:disabled) {
   background: #06393d;
   transform: translateY(-50%) scale(1.05);
+  cursor: pointer;
 }
 
 .june-btn:disabled {

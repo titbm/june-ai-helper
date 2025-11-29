@@ -1,9 +1,8 @@
 let shouldStopTyping = false;
-let currentTypingId = 0; // ID текущего процесса ввода
+let currentTypingId = 0;
 let blockOverlay = null;
 let chatChoiceDialog = null;
 
-// Создание блокирующего overlay
 function createBlockOverlay() {
   if (blockOverlay) return;
   
@@ -76,7 +75,6 @@ function createBlockOverlay() {
   blockOverlay.bannerElement = banner;
 }
 
-// Удаление блокирующего overlay
 function removeBlockOverlay() {
   if (blockOverlay) {
     if (blockOverlay.bannerElement) {
@@ -87,7 +85,7 @@ function removeBlockOverlay() {
   }
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'INSERT_AND_SUBMIT') {
     // Увеличиваем ID, чтобы прервать предыдущий процесс
     currentTypingId++;
@@ -103,10 +101,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     closeChatChoiceDialog();
     sendResponse({ success: true });
   } else if (message.type === 'CLEAR_AND_STOP') {
-    // Останавливаем текущий ввод (если идет)
     shouldStopTyping = true;
-    
-    // Очищаем textarea
     const textarea = document.querySelector('textarea[placeholder*="Type your question"]');
     if (textarea) {
       const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
@@ -121,8 +116,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'STOP_AUTOMATION') {
     removeBlockOverlay();
     closeChatChoiceDialog();
-    
-    // Очищаем textarea, чтобы кнопка submit стала disabled
     const textarea = document.querySelector('textarea[placeholder*="Type your question"]');
     if (textarea) {
       const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
@@ -134,10 +127,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'CHECK_CHAT_HAS_MESSAGES') {
     sendResponse({ hasMessages: checkIfChatHasMessages() });
   } else if (message.type === 'CHECK_BOT_RESPONDING') {
-    // Проверяем, отвечает ли бот прямо сейчас (кнопка submit enabled)
     const submitBtn = document.querySelector('button[aria-label="submit"]');
-    const isBotResponding = submitBtn && !submitBtn.disabled;
-    sendResponse({ isBotResponding });
+    sendResponse({ isBotResponding: submitBtn && !submitBtn.disabled });
   } else if (message.type === 'SHOW_CHAT_CHOICE_DIALOG') {
     showChatChoiceDialog().then(choice => sendResponse({ choice }));
     return true;
@@ -155,25 +146,24 @@ async function insertAndSubmit(text, typingId) {
   if (textarea && submitBtn) {
     const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
     
-    // Сначала очищаем textarea, если там что-то есть
     if (textarea.value.trim().length > 0) {
       nativeSetter.call(textarea, '');
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     
-    // Если кнопка enabled (бот отвечает) - игнорируем запрос
     if (!submitBtn.disabled) {
-      return { success: false, error: 'Бот еще отвечает на предыдущий вопрос' };
+      await waitForButtonDisabled();
+      if (shouldStopTyping || typingId !== currentTypingId) {
+        return { success: false, stopped: true };
+      }
     }
     
-    // Вводим текст
     textarea.focus();
     const isTabActive = !document.hidden;
     
     if (isTabActive) {
       for (let i = 0; i < text.length; i++) {
-        // Проверяем, не устарел ли наш процесс
         if (shouldStopTyping || typingId !== currentTypingId) {
           return { success: false, stopped: true };
         }
@@ -193,35 +183,22 @@ async function insertAndSubmit(text, typingId) {
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
     }
     
-    // Проверяем актуальность
     if (shouldStopTyping || typingId !== currentTypingId) {
       return { success: false, stopped: true };
     }
     
     textarea.dispatchEvent(new Event('change', { bubbles: true }));
-    
-    // Небольшая задержка после ввода
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Проверяем актуальность
     if (shouldStopTyping || typingId !== currentTypingId) {
       return { success: false, stopped: true };
     }
     
-    // Кликаем submit
     submitBtn.click();
-    
-    // Уведомляем что сообщение отправлено
     chrome.runtime.sendMessage({ type: 'MESSAGE_SUBMITTED' }).catch(() => {});
-    
-    // Уведомляем что начинаем ждать ответа бота - блокируем кнопки
     chrome.runtime.sendMessage({ type: 'BOT_STARTED' }).catch(() => {});
-    
-    // Запускаем ожидание ответа бота в фоне
-    (async () => {
-      await waitForButtonDisabled();
-      chrome.runtime.sendMessage({ type: 'BOT_FINISHED' }).catch(() => {});
-    })();
+    await waitForButtonDisabled();
+    chrome.runtime.sendMessage({ type: 'BOT_FINISHED' }).catch(() => {});
     
     return { success: true };
   }
@@ -229,24 +206,18 @@ async function insertAndSubmit(text, typingId) {
   return { success: false };
 }
 
-// Ожидание, пока кнопка submit станет disabled (бот закончил отвечать)
 async function waitForButtonDisabled() {
   return new Promise((resolve) => {
     let checkCount = 0;
-    const maxChecks = 600; // 60 секунд максимум (для длинных ответов)
+    const maxChecks = 600;
     
     const checkInterval = setInterval(() => {
-      // НЕ проверяем shouldStopTyping - всегда дожидаемся окончания ответа бота
-      
       checkCount++;
       if (checkCount > maxChecks) {
-        // Таймаут - бот слишком долго отвечает, прерываем его
         clearInterval(checkInterval);
         const submitBtn = document.querySelector('button[aria-label="submit"]');
         if (submitBtn && !submitBtn.disabled) {
-          // Кнопка все еще enabled - кликаем чтобы прервать ответ
           submitBtn.click();
-          // Ждем немного, чтобы прерывание обработалось
           setTimeout(() => resolve(), 500);
         } else {
           resolve();
@@ -255,8 +226,6 @@ async function waitForButtonDisabled() {
       }
       
       const submitBtn = document.querySelector('button[aria-label="submit"]');
-      
-      // Проверяем, что кнопка стала disabled (бот закончил отвечать)
       if (submitBtn && submitBtn.disabled) {
         clearInterval(checkInterval);
         resolve();
@@ -311,22 +280,14 @@ function closeChatChoiceDialog() {
   }
 }
 
-// Переименование чата
 async function renameChat(theme) {
   try {
-    console.log('renameChat called with theme:', theme);
-    
-    // Ждем, пока чат появится в списке (короткая задержка)
     await new Promise(resolve => setTimeout(resolve, 500));
     
     const chatOptionsBtn = document.querySelector('button[aria-label="Chat item options"]');
-    
     if (!chatOptionsBtn) {
-      console.log('Chat options button not found');
       return { success: false, error: 'Chat options button not found' };
     }
-    
-    console.log('Chat options button found, clicking...');
     
     chatOptionsBtn.dispatchEvent(new PointerEvent('pointerdown', {
       bubbles: true,
@@ -351,7 +312,6 @@ async function renameChat(theme) {
     );
     
     if (!renameMenuItem) {
-      console.log('Menu not found, trying again...');
       await new Promise(resolve => setTimeout(resolve, 500));
       renameMenuItem = Array.from(document.querySelectorAll('[role="menuitem"]')).find(
         item => item.textContent.includes('Rename')
@@ -359,29 +319,16 @@ async function renameChat(theme) {
     }
     
     if (!renameMenuItem) {
-      console.log('Rename menu item not found');
       return { success: false, error: 'Rename menu item not found' };
     }
-    
-    console.log('Clicking Rename...');
     renameMenuItem.click();
     await new Promise(resolve => setTimeout(resolve, 500));
     
     const dialog = document.querySelector('[role="dialog"]');
-    if (!dialog) {
-      console.log('Rename dialog not found');
-      return { success: false, error: 'Rename dialog not found' };
-    }
+    if (!dialog) return { success: false, error: 'Rename dialog not found' };
     
-    const renameInput = dialog.querySelector('input[type="text"]') || 
-                       dialog.querySelector('input');
-    
-    if (!renameInput) {
-      console.log('Rename input not found');
-      return { success: false, error: 'Rename input not found' };
-    }
-    
-    console.log('Setting new name:', theme);
+    const renameInput = dialog.querySelector('input[type="text"]') || dialog.querySelector('input');
+    if (!renameInput) return { success: false, error: 'Rename input not found' };
     
     renameInput.focus();
     renameInput.select();
@@ -393,27 +340,20 @@ async function renameChat(theme) {
     
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    const saveBtn = Array.from(dialog.querySelectorAll('button')).find(
-      btn => btn.textContent.includes('Save')
-    );
+    const saveBtn = Array.from(dialog.querySelectorAll('button')).find(btn => btn.textContent.includes('Save'));
     
     if (saveBtn) {
-      console.log('Clicking Save...');
       saveBtn.click();
-      console.log('Chat renamed successfully!');
     } else {
-      console.log('Save button not found, trying Enter...');
       renameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
     }
     
     return { success: true };
   } catch (error) {
-    console.error('Error in renameChat:', error);
     return { success: false, error: error.message };
   }
 }
 
-// Показ диалога выбора чата
 function showChatChoiceDialog() {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
@@ -432,7 +372,6 @@ function showChatChoiceDialog() {
     `;
     
     chatChoiceDialog = overlay;
-    // Сохраняем resolve функцию для возможности отмены
     chatChoiceDialog.resolvePromise = resolve;
     
     const dialog = document.createElement('div');
@@ -502,7 +441,6 @@ function showChatChoiceDialog() {
       currentChatBtn.style.borderColor = 'rgb(187, 200, 201)';
     };
     currentChatBtn.onclick = () => {
-      // Удаляем диалог без вызова resolve в closeChatChoiceDialog
       if (chatChoiceDialog) {
         chatChoiceDialog.remove();
         chatChoiceDialog = null;
@@ -536,7 +474,6 @@ function showChatChoiceDialog() {
       newChatBtn.style.background = 'rgb(8, 71, 76)';
     };
     newChatBtn.onclick = () => {
-      // Удаляем диалог без вызова resolve в closeChatChoiceDialog
       if (chatChoiceDialog) {
         chatChoiceDialog.remove();
         chatChoiceDialog = null;
