@@ -124,6 +124,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
   } else if (message.type === 'CHECK_CHAT_HAS_MESSAGES') {
     sendResponse({ hasMessages: checkIfChatHasMessages() });
+  } else if (message.type === 'CHECK_BOT_RESPONDING') {
+    // Проверяем, отвечает ли бот прямо сейчас (кнопка submit enabled)
+    const submitBtn = document.querySelector('button[aria-label="submit"]');
+    const isBotResponding = submitBtn && !submitBtn.disabled;
+    sendResponse({ isBotResponding });
   } else if (message.type === 'SHOW_CHAT_CHOICE_DIALOG') {
     showChatChoiceDialog().then(choice => sendResponse({ choice }));
     return true;
@@ -198,10 +203,16 @@ async function insertAndSubmit(text, typingId) {
     chrome.runtime.sendMessage({ type: 'BOT_STARTED' }).catch(() => {});
     
     // Ждем, пока кнопка станет disabled (бот закончил отвечать)
+    // ВАЖНО: даже если shouldStopTyping=true, мы должны дождаться ответа бота
     await waitForButtonDisabled();
     
     // Уведомляем что бот закончил - разблокируем кнопки
     chrome.runtime.sendMessage({ type: 'BOT_FINISHED' }).catch(() => {});
+    
+    // Проверяем, была ли остановка после отправки
+    if (shouldStopTyping || typingId !== currentTypingId) {
+      return { success: false, stopped: true };
+    }
     
     return { success: true };
   }
@@ -216,11 +227,7 @@ async function waitForButtonDisabled() {
     const maxChecks = 600; // 60 секунд максимум (для длинных ответов)
     
     const checkInterval = setInterval(() => {
-      if (shouldStopTyping) {
-        clearInterval(checkInterval);
-        resolve();
-        return;
-      }
+      // НЕ проверяем shouldStopTyping - всегда дожидаемся окончания ответа бота
       
       checkCount++;
       if (checkCount > maxChecks) {

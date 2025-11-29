@@ -165,7 +165,9 @@ function openJuneAI() {
 function updateJuneButtons() {
   const buttons = document.querySelectorAll('.june-btn');
   buttons.forEach(btn => {
-    btn.disabled = isBotResponding || isAutomating; // Блокируем когда бот отвечает или идет автоотправка
+    // Блокируем только когда бот отвечает (isBotResponding) или идет автоотправка (isAutomating)
+    // isSending используется только для внутренней логики одиночных отправок
+    btn.disabled = isBotResponding || isAutomating;
   });
 }
 
@@ -445,7 +447,6 @@ async function automate() {
   }
   
   isAutomating = true;
-  isSending = true;
   automateBtn.textContent = 'Остановить отправку';
   automateBtn.classList.add('stopping');
   automateBtn.disabled = false;
@@ -483,8 +484,8 @@ chrome.runtime.onMessage.addListener((message) => {
     automateBtn.classList.remove('stopping');
     automateBtn.disabled = false;
     isAutomating = false;
-    isSending = false;
-    updateControlButtons(); // Разблокируем кнопки
+    // НЕ сбрасываем isSending здесь - ждем BOT_FINISHED
+    updateControlButtons(); // Обновляем кнопки (они останутся disabled если isSending=true)
   } else if (message.type === 'STOPPED') {
     statusDiv.textContent = '⏸ Отправка остановлена';
     statusDiv.style.color = '#6b7280';
@@ -492,8 +493,13 @@ chrome.runtime.onMessage.addListener((message) => {
     automateBtn.classList.remove('stopping');
     automateBtn.disabled = false;
     isAutomating = false;
-    isSending = false;
-    updateControlButtons(); // Разблокируем кнопки
+    
+    // Если бот отвечает, устанавливаем флаг
+    if (message.isBotResponding) {
+      isBotResponding = true;
+    }
+    
+    updateControlButtons(); // Обновляем кнопки (они останутся disabled если isBotResponding=true)
   } else if (message.type === 'QUERIES_UPDATED') {
     currentQueries = message.queries;
     currentTheme = message.theme;

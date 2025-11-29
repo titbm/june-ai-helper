@@ -640,7 +640,15 @@ async function handleAutomate() {
         try {
           await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
         } catch {}
-        notifySidepanel(null, { type: 'STOPPED' });
+        
+        // Проверяем, отвечает ли бот
+        let isBotResponding = false;
+        try {
+          const botCheck = await chrome.tabs.sendMessage(automationTabId, { type: 'CHECK_BOT_RESPONDING' });
+          isBotResponding = botCheck && botCheck.isBotResponding;
+        } catch {}
+        
+        notifySidepanel(null, { type: 'STOPPED', isBotResponding });
         shouldStopAutomation = false;
         isAutomating = false;
         currentAutomationTabId = null;
@@ -658,7 +666,15 @@ async function handleAutomate() {
       try {
         await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
       } catch {}
-      notifySidepanel(null, { type: 'STOPPED' });
+      
+      // Проверяем, отвечает ли бот
+      let isBotResponding = false;
+      try {
+        const botCheck = await chrome.tabs.sendMessage(automationTabId, { type: 'CHECK_BOT_RESPONDING' });
+        isBotResponding = botCheck && botCheck.isBotResponding;
+      } catch {}
+      
+      notifySidepanel(null, { type: 'STOPPED', isBotResponding });
       shouldStopAutomation = false;
       isAutomating = false;
       currentAutomationTabId = null;
@@ -715,7 +731,15 @@ async function handleAutomate() {
         try {
           await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
         } catch {}
-        notifySidepanel(null, { type: 'STOPPED' });
+        
+        // Проверяем, отвечает ли бот
+        let isBotResponding = false;
+        try {
+          const botCheck = await chrome.tabs.sendMessage(automationTabId, { type: 'CHECK_BOT_RESPONDING' });
+          isBotResponding = botCheck && botCheck.isBotResponding;
+        } catch {}
+        
+        notifySidepanel(null, { type: 'STOPPED', isBotResponding });
         shouldStopAutomation = false;
         isAutomating = false;
         currentAutomationTabId = null;
@@ -730,7 +754,15 @@ async function handleAutomate() {
           try {
             await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
           } catch {}
-          notifySidepanel(null, { type: 'STOPPED' });
+          
+          // Проверяем, отвечает ли бот
+          let isBotResponding = false;
+          try {
+            const botCheck = await chrome.tabs.sendMessage(automationTabId, { type: 'CHECK_BOT_RESPONDING' });
+            isBotResponding = botCheck && botCheck.isBotResponding;
+          } catch {}
+          
+          notifySidepanel(null, { type: 'STOPPED', isBotResponding });
           shouldStopAutomation = false;
           isAutomating = false;
           currentAutomationTabId = null;
