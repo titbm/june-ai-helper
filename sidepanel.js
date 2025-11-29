@@ -3,6 +3,8 @@ let currentQueries = [];
 let isJuneTabOpen = false;
 let isAutomating = false;
 let isSending = false;
+let isBotResponding = false; // Бот отвечает на вопрос
+let sendingRequestId = 0; // Счетчик для отслеживания запросов
 let currentTheme = '';
 let isThemeLocked = false;
 
@@ -82,6 +84,14 @@ async function checkJuneTab() {
 // Открытие June AI
 function openJuneAI() {
   chrome.tabs.create({ url: 'https://askjune.ai/app/chat' });
+}
+
+// Обновление состояния кнопок June
+function updateJuneButtons() {
+  const buttons = document.querySelectorAll('.june-btn');
+  buttons.forEach(btn => {
+    btn.disabled = isBotResponding; // Блокируем только когда бот отвечает
+  });
 }
 
 // Обновление UI
@@ -210,8 +220,12 @@ function renderQueries() {
 
   // Обработчики для кнопок June
   document.querySelectorAll('.june-btn').forEach(btn => {
+    // Устанавливаем начальное состояние
+    btn.disabled = isBotResponding;
+    
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (isBotResponding) return; // Блокируем только если бот отвечает
       const index = btn.dataset.index;
       sendToJune(currentQueries[index]);
     });
@@ -231,21 +245,79 @@ async function copyToClipboard(text) {
 
 // Отправка одного запроса в June
 async function sendToJune(query) {
+  // Увеличиваем счетчик запросов
+  sendingRequestId++;
+  const myRequestId = sendingRequestId;
+  
+  // Если уже идет отправка - прерываем предыдущую
   if (isSending) {
-    return; // Блокируем повторную отправку
+    await chrome.runtime.sendMessage({ type: 'STOP_SINGLE_SEND' });
+  }
+  
+  // Устанавливаем флаг
+  isSending = true;
+  updateJuneButtons(); // Блокируем кнопки
+  
+  // Небольшая задержка, чтобы предыдущий процесс остановился
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  // Проверяем, не был ли запущен более новый запрос
+  if (myRequestId !== sendingRequestId) {
+    // Наш запрос устарел, выходим
+    return;
   }
   
   await checkJuneTab();
   if (!isJuneTabOpen) {
+    if (myRequestId === sendingRequestId) {
+      isSending = false;
+      updateJuneButtons(); // Разблокируем кнопки
+    }
     openJuneAI();
     return;
   }
   
-  isSending = true;
+  // Еще раз проверяем актуальность
+  if (myRequestId !== sendingRequestId) {
+    return;
+  }
+  
   statusDiv.textContent = 'Вводим сообщение...';
   statusDiv.style.color = '#6b7280';
   
-  chrome.runtime.sendMessage({ type: 'SEND_TO_JUNE', query });
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'SEND_TO_JUNE', query });
+    
+    if (response && response.success) {
+      // Проверяем актуальность для обновления UI
+      if (myRequestId !== sendingRequestId) {
+        return;
+      }
+      
+      statusDiv.textContent = '✓ Отправлено';
+      statusDiv.style.color = '#6b7280';
+    } else if (response && response.error && response.error.includes('отвечает')) {
+      // Бот уже отвечает - кнопки заблокированы, сообщение не нужно
+      return;
+    } else {
+      statusDiv.textContent = '✗ Ошибка отправки';
+      statusDiv.style.color = '#ef4444';
+    }
+  } catch (error) {
+    if (myRequestId === sendingRequestId) {
+      statusDiv.textContent = '✗ Ошибка: ' + error.message;
+      statusDiv.style.color = '#ef4444';
+    }
+  } finally {
+    if (myRequestId === sendingRequestId) {
+      isSending = false;
+      setTimeout(() => {
+        if (myRequestId === sendingRequestId) {
+          statusDiv.textContent = '';
+        }
+      }, 2000);
+    }
+  }
 }
 
 // Отправка всех запросов
@@ -327,9 +399,14 @@ chrome.runtime.onMessage.addListener((message) => {
   } else if (message.type === 'GENERATING') {
     statusDiv.textContent = 'Запрос на генерацию отправлен, ждем...';
     statusDiv.style.color = '#6b7280';
-  } else if (message.type === 'BOT_RESPONSE_COMPLETE') {
-    isSending = false;
-    statusDiv.textContent = '';
+  } else if (message.type === 'BOT_STARTED') {
+    // Бот начал отвечать - блокируем кнопки
+    isBotResponding = true;
+    updateJuneButtons();
+  } else if (message.type === 'BOT_FINISHED') {
+    // Бот закончил отвечать - разблокируем кнопки
+    isBotResponding = false;
+    updateJuneButtons();
   }
 });
 

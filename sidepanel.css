@@ -182,6 +182,10 @@ button {
   transform: translateY(-50%) scale(1.05);
 }
 
+.june-btn:disabled {
+  cursor: not-allowed;
+}
+
 .june-btn::after {
   content: '→';
   font-size: 13px;

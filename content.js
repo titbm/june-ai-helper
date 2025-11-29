@@ -1,4 +1,5 @@
 let shouldStopTyping = false;
+let currentTypingId = 0; // ID текущего процесса ввода
 let blockOverlay = null;
 let chatChoiceDialog = null;
 
@@ -88,8 +89,11 @@ function removeBlockOverlay() {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'INSERT_AND_SUBMIT') {
+    // Увеличиваем ID, чтобы прервать предыдущий процесс
+    currentTypingId++;
+    const myTypingId = currentTypingId;
     shouldStopTyping = false;
-    insertAndSubmit(message.text).then(sendResponse);
+    insertAndSubmit(message.text, myTypingId).then(sendResponse);
     return true;
   } else if (message.type === 'CLICK_NEW_CHAT') {
     sendResponse(clickNewChat());
@@ -97,6 +101,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     shouldStopTyping = true;
     removeBlockOverlay();
     closeChatChoiceDialog();
+    sendResponse({ success: true });
+  } else if (message.type === 'CLEAR_AND_STOP') {
+    // Останавливаем текущий ввод (если идет)
+    shouldStopTyping = true;
+    
+    // Очищаем textarea
+    const textarea = document.querySelector('textarea[placeholder*="Type your question"]');
+    if (textarea) {
+      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      nativeSetter.call(textarea, '');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    
     sendResponse({ success: true });
   } else if (message.type === 'START_AUTOMATION') {
     createBlockOverlay();
@@ -114,54 +131,69 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-async function insertAndSubmit(text) {
+async function insertAndSubmit(text, typingId) {
   const textarea = document.querySelector('textarea[placeholder*="Type your question"]');
   const submitBtn = document.querySelector('button[aria-label="submit"]');
   
   if (textarea && submitBtn) {
-    if (textarea.value !== text) {
-      textarea.focus();
-      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-      const isTabActive = !document.hidden;
-      
-      if (isTabActive) {
-        for (let i = 0; i < text.length; i++) {
-          if (shouldStopTyping) return { success: false, stopped: true };
-          
-          if (document.hidden) {
-            nativeSetter.call(textarea, text);
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            break;
-          }
-          
-          nativeSetter.call(textarea, text.substring(0, i + 1));
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-          await new Promise(resolve => setTimeout(resolve, Math.random() * 150 + 50));
+    // Если кнопка enabled (бот отвечает) - игнорируем запрос
+    if (!submitBtn.disabled) {
+      return { success: false, error: 'Бот еще отвечает на предыдущий вопрос' };
+    }
+    
+    // Вводим текст
+    textarea.focus();
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+    const isTabActive = !document.hidden;
+    
+    if (isTabActive) {
+      for (let i = 0; i < text.length; i++) {
+        // Проверяем, не устарел ли наш процесс
+        if (shouldStopTyping || typingId !== currentTypingId) {
+          return { success: false, stopped: true };
         }
-      } else {
-        nativeSetter.call(textarea, text);
+        
+        if (document.hidden) {
+          nativeSetter.call(textarea, text);
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+          break;
+        }
+        
+        nativeSetter.call(textarea, text.substring(0, i + 1));
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 150 + 50));
       }
-      
-      if (shouldStopTyping) return { success: false, stopped: true };
-      textarea.dispatchEvent(new Event('change', { bubbles: true }));
+    } else {
+      nativeSetter.call(textarea, text);
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
     }
     
-    for (let waited = 0; waited < 300; waited += 50) {
-      if (shouldStopTyping) return { success: false, stopped: true };
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    
-    if (shouldStopTyping) {
+    // Проверяем актуальность
+    if (shouldStopTyping || typingId !== currentTypingId) {
       return { success: false, stopped: true };
     }
     
-    if (!submitBtn.disabled) {
-      submitBtn.click();
-      
-      // Запускаем ожидание ответа бота асинхронно
-      waitForBotResponse();
+    textarea.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // Небольшая задержка после ввода
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Проверяем актуальность
+    if (shouldStopTyping || typingId !== currentTypingId) {
+      return { success: false, stopped: true };
     }
+    
+    // Кликаем submit
+    submitBtn.click();
+    
+    // Уведомляем что начинаем ждать ответа бота - блокируем кнопки
+    chrome.runtime.sendMessage({ type: 'BOT_STARTED' }).catch(() => {});
+    
+    // Ждем, пока кнопка станет disabled (бот закончил отвечать)
+    await waitForButtonDisabled();
+    
+    // Уведомляем что бот закончил - разблокируем кнопки
+    chrome.runtime.sendMessage({ type: 'BOT_FINISHED' }).catch(() => {});
     
     return { success: true };
   }
@@ -169,11 +201,11 @@ async function insertAndSubmit(text) {
   return { success: false };
 }
 
-// Ожидание завершения ответа бота
-async function waitForBotResponse() {
+// Ожидание, пока кнопка submit станет disabled (бот закончил отвечать)
+async function waitForButtonDisabled() {
   return new Promise((resolve) => {
     let checkCount = 0;
-    const maxChecks = 600; // 5 минут максимум
+    const maxChecks = 600; // 60 секунд максимум (для длинных ответов)
     
     const checkInterval = setInterval(() => {
       if (shouldStopTyping) {
@@ -184,22 +216,28 @@ async function waitForBotResponse() {
       
       checkCount++;
       if (checkCount > maxChecks) {
+        // Таймаут - бот слишком долго отвечает, прерываем его
         clearInterval(checkInterval);
-        chrome.runtime.sendMessage({ type: 'BOT_RESPONSE_COMPLETE' }).catch(() => {});
-        resolve();
+        const submitBtn = document.querySelector('button[aria-label="submit"]');
+        if (submitBtn && !submitBtn.disabled) {
+          // Кнопка все еще enabled - кликаем чтобы прервать ответ
+          submitBtn.click();
+          // Ждем немного, чтобы прерывание обработалось
+          setTimeout(() => resolve(), 500);
+        } else {
+          resolve();
+        }
         return;
       }
       
-      // Проверяем, что кнопка submit снова активна (бот закончил отвечать)
       const submitBtn = document.querySelector('button[aria-label="submit"]');
-      const textarea = document.querySelector('textarea[placeholder*="Type your question"]');
       
-      if (submitBtn && !submitBtn.disabled && textarea && !textarea.disabled) {
+      // Проверяем, что кнопка стала disabled (бот закончил отвечать)
+      if (submitBtn && submitBtn.disabled) {
         clearInterval(checkInterval);
-        chrome.runtime.sendMessage({ type: 'BOT_RESPONSE_COMPLETE' }).catch(() => {});
         resolve();
       }
-    }, 500);
+    }, 100);
   });
 }
 

@@ -184,7 +184,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     generateQueries().then(sendResponse);
     return true;
   } else if (message.type === 'SEND_TO_JUNE') {
-    handleSendToJune(message.query);
+    handleSendToJune(message.query).then(sendResponse);
+    return true;
+  } else if (message.type === 'STOP_SINGLE_SEND') {
+    // Прерываем текущую одиночную отправку
+    chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+      if (tab) {
+        chrome.tabs.sendMessage(tab.id, { type: 'STOP_TYPING' }).catch(() => {});
+      }
+    });
   } else if (message.type === 'AUTOMATE') {
     handleAutomate();
   } else if (message.type === 'STOP_AUTOMATION') {
@@ -193,6 +201,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'BOT_RESPONSE_COMPLETE') {
     // Уведомляем sidepanel что бот закончил отвечать
     notifySidepanel(null, { type: 'BOT_RESPONSE_COMPLETE' });
+  } else if (message.type === 'BOT_STARTED') {
+    // Бот начал отвечать - блокируем кнопки
+    notifySidepanel(null, { type: 'BOT_STARTED' });
+  } else if (message.type === 'BOT_FINISHED') {
+    // Бот закончил отвечать - разблокируем кнопки
+    notifySidepanel(null, { type: 'BOT_FINISHED' });
   } else if (message.type === 'SIDEPANEL_OPENED') {
     // Sidepanel сообщает, что открылась - отправляем текущее состояние
     if (sender.tab) {
@@ -223,17 +237,24 @@ async function handleSendToJune(query) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   
   if (!tab || !tab.url || !tab.url.includes('askjune.ai')) {
-    chrome.runtime.sendMessage({ type: 'ERROR', message: 'Активная вкладка не June AI' });
-    return;
+    return { success: false, error: 'Активная вкладка не June AI' };
   }
   
   try {
-    await chrome.tabs.sendMessage(tab.id, {
+    // Останавливаем текущий ввод (если идет) и очищаем textarea
+    await chrome.tabs.sendMessage(tab.id, { type: 'CLEAR_AND_STOP' }).catch(() => {});
+    
+    // Небольшая задержка для обработки остановки
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // insertAndSubmit сам дождется когда можно начинать ввод
+    const response = await chrome.tabs.sendMessage(tab.id, {
       type: 'INSERT_AND_SUBMIT',
       text: query
     });
+    return response || { success: true };
   } catch (error) {
-    chrome.runtime.sendMessage({ type: 'ERROR', message: 'Ошибка отправки: ' + error.message });
+    return { success: false, error: error.message };
   }
 }
 
@@ -423,7 +444,6 @@ async function handleAutomate() {
       }
     }
   } catch (error) {
-    console.log('Ошибка проверки чата:', error);
     // Если была остановка, выходим
     if (shouldStopAutomation) {
       try {
