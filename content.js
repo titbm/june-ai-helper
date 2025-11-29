@@ -121,6 +121,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'STOP_AUTOMATION') {
     removeBlockOverlay();
     closeChatChoiceDialog();
+    
+    // Очищаем textarea, чтобы кнопка submit стала disabled
+    const textarea = document.querySelector('textarea[placeholder*="Type your question"]');
+    if (textarea) {
+      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      nativeSetter.call(textarea, '');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    
     sendResponse({ success: true });
   } else if (message.type === 'CHECK_CHAT_HAS_MESSAGES') {
     sendResponse({ hasMessages: checkIfChatHasMessages() });
@@ -131,6 +140,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ isBotResponding });
   } else if (message.type === 'SHOW_CHAT_CHOICE_DIALOG') {
     showChatChoiceDialog().then(choice => sendResponse({ choice }));
+    return true;
+  } else if (message.type === 'RENAME_CHAT') {
+    renameChat(message.theme).then(sendResponse);
     return true;
   }
   return true;
@@ -199,20 +211,17 @@ async function insertAndSubmit(text, typingId) {
     // Кликаем submit
     submitBtn.click();
     
+    // Уведомляем что сообщение отправлено
+    chrome.runtime.sendMessage({ type: 'MESSAGE_SUBMITTED' }).catch(() => {});
+    
     // Уведомляем что начинаем ждать ответа бота - блокируем кнопки
     chrome.runtime.sendMessage({ type: 'BOT_STARTED' }).catch(() => {});
     
-    // Ждем, пока кнопка станет disabled (бот закончил отвечать)
-    // ВАЖНО: даже если shouldStopTyping=true, мы должны дождаться ответа бота
-    await waitForButtonDisabled();
-    
-    // Уведомляем что бот закончил - разблокируем кнопки
-    chrome.runtime.sendMessage({ type: 'BOT_FINISHED' }).catch(() => {});
-    
-    // Проверяем, была ли остановка после отправки
-    if (shouldStopTyping || typingId !== currentTypingId) {
-      return { success: false, stopped: true };
-    }
+    // Запускаем ожидание ответа бота в фоне
+    (async () => {
+      await waitForButtonDisabled();
+      chrome.runtime.sendMessage({ type: 'BOT_FINISHED' }).catch(() => {});
+    })();
     
     return { success: true };
   }
@@ -299,6 +308,108 @@ function closeChatChoiceDialog() {
     }
     chatChoiceDialog.remove();
     chatChoiceDialog = null;
+  }
+}
+
+// Переименование чата
+async function renameChat(theme) {
+  try {
+    console.log('renameChat called with theme:', theme);
+    
+    // Ждем, пока чат появится в списке (короткая задержка)
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const chatOptionsBtn = document.querySelector('button[aria-label="Chat item options"]');
+    
+    if (!chatOptionsBtn) {
+      console.log('Chat options button not found');
+      return { success: false, error: 'Chat options button not found' };
+    }
+    
+    console.log('Chat options button found, clicking...');
+    
+    chatOptionsBtn.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      pointerId: 1,
+      pointerType: 'mouse'
+    }));
+    chatOptionsBtn.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      pointerId: 1,
+      pointerType: 'mouse'
+    }));
+    chatOptionsBtn.click();
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    let renameMenuItem = Array.from(document.querySelectorAll('[role="menuitem"]')).find(
+      item => item.textContent.includes('Rename')
+    );
+    
+    if (!renameMenuItem) {
+      console.log('Menu not found, trying again...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      renameMenuItem = Array.from(document.querySelectorAll('[role="menuitem"]')).find(
+        item => item.textContent.includes('Rename')
+      );
+    }
+    
+    if (!renameMenuItem) {
+      console.log('Rename menu item not found');
+      return { success: false, error: 'Rename menu item not found' };
+    }
+    
+    console.log('Clicking Rename...');
+    renameMenuItem.click();
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const dialog = document.querySelector('[role="dialog"]');
+    if (!dialog) {
+      console.log('Rename dialog not found');
+      return { success: false, error: 'Rename dialog not found' };
+    }
+    
+    const renameInput = dialog.querySelector('input[type="text"]') || 
+                       dialog.querySelector('input');
+    
+    if (!renameInput) {
+      console.log('Rename input not found');
+      return { success: false, error: 'Rename input not found' };
+    }
+    
+    console.log('Setting new name:', theme);
+    
+    renameInput.focus();
+    renameInput.select();
+    
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    nativeSetter.call(renameInput, theme);
+    renameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    renameInput.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const saveBtn = Array.from(dialog.querySelectorAll('button')).find(
+      btn => btn.textContent.includes('Save')
+    );
+    
+    if (saveBtn) {
+      console.log('Clicking Save...');
+      saveBtn.click();
+      console.log('Chat renamed successfully!');
+    } else {
+      console.log('Save button not found, trying Enter...');
+      renameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error in renameChat:', error);
+    return { success: false, error: error.message };
   }
 }
 

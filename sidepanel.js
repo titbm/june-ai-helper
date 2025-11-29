@@ -466,7 +466,7 @@ chrome.runtime.onMessage.addListener((message) => {
   } else if (message.type === 'TAB_CHANGED') {
     isJuneTabOpen = message.isJune;
     updateUI();
-  } else if (message.type === 'ERROR') {
+  } else if (message.type === 'AUTOMATION_ERROR') {
     statusDiv.textContent = `✗ ${message.message}`;
     statusDiv.style.color = '#ef4444';
     automateBtn.textContent = 'Отправить все запросы';
@@ -474,10 +474,10 @@ chrome.runtime.onMessage.addListener((message) => {
     automateBtn.disabled = false;
     isAutomating = false;
     updateControlButtons(); // Разблокируем кнопки
-  } else if (message.type === 'PROGRESS') {
+  } else if (message.type === 'AUTOMATION_PROGRESS') {
     statusDiv.textContent = `Отправка ${message.current} из ${message.total}...`;
     statusDiv.style.color = '#6b7280';
-  } else if (message.type === 'COMPLETE') {
+  } else if (message.type === 'AUTOMATION_COMPLETE') {
     statusDiv.textContent = '✓ Отправка завершена!';
     statusDiv.style.color = '#6b7280';
     automateBtn.textContent = 'Отправить все запросы';
@@ -486,7 +486,7 @@ chrome.runtime.onMessage.addListener((message) => {
     isAutomating = false;
     // НЕ сбрасываем isSending здесь - ждем BOT_FINISHED
     updateControlButtons(); // Обновляем кнопки (они останутся disabled если isSending=true)
-  } else if (message.type === 'STOPPED') {
+  } else if (message.type === 'AUTOMATION_STOPPED') {
     statusDiv.textContent = '⏸ Отправка остановлена';
     statusDiv.style.color = '#6b7280';
     automateBtn.textContent = 'Отправить все запросы';
@@ -494,12 +494,17 @@ chrome.runtime.onMessage.addListener((message) => {
     automateBtn.disabled = false;
     isAutomating = false;
     
-    // Если бот отвечает, устанавливаем флаг
+    // Сбрасываем флаги отправки
+    isSending = false;
+    
+    // Если бот отвечает, устанавливаем флаг, иначе сбрасываем
     if (message.isBotResponding) {
       isBotResponding = true;
+    } else {
+      isBotResponding = false;
     }
     
-    updateControlButtons(); // Обновляем кнопки (они останутся disabled если isBotResponding=true)
+    updateControlButtons();
   } else if (message.type === 'QUERIES_UPDATED') {
     currentQueries = message.queries;
     currentTheme = message.theme;

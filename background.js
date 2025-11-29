@@ -316,6 +316,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'BOT_RESPONSE_COMPLETE') {
     // Уведомляем sidepanel что бот закончил отвечать
     notifySidepanel(null, { type: 'BOT_RESPONSE_COMPLETE' });
+  } else if (message.type === 'MESSAGE_SUBMITTED') {
+    // Сообщение отправлено - можно переименовывать чат
+    // Здесь можно добавить логику переименования, если нужно
   } else if (message.type === 'BOT_STARTED') {
     // Бот начал отвечать - блокируем кнопки
     notifySidepanel(null, { type: 'BOT_STARTED' });
@@ -385,6 +388,18 @@ async function handleSendToJune(query) {
   }
   
   try {
+    // Проверяем, пустой ли чат ПЕРЕД отправкой
+    let isNewChat = false;
+    try {
+      const checkResponse = await chrome.tabs.sendMessage(tab.id, { 
+        type: 'CHECK_CHAT_HAS_MESSAGES' 
+      });
+      isNewChat = checkResponse && !checkResponse.hasMessages;
+      console.log('Chat check before send:', { hasMessages: checkResponse?.hasMessages, isNewChat });
+    } catch (error) {
+      console.log('Failed to check chat:', error);
+    }
+    
     // Останавливаем текущий ввод (если идет) и очищаем textarea
     await chrome.tabs.sendMessage(tab.id, { type: 'CLEAR_AND_STOP' }).catch(() => {});
     
@@ -400,6 +415,20 @@ async function handleSendToJune(query) {
     // Если процесс был остановлен, не считаем это ошибкой
     if (response && response.stopped) {
       return { success: false, stopped: true };
+    }
+    
+    // Если это был новый чат, переименовываем СРАЗУ, не дожидаясь ответа
+    if (isNewChat && currentTheme) {
+      chrome.tabs.sendMessage(tab.id, {
+        type: 'RENAME_CHAT',
+        theme: currentTheme
+      }).then(result => {
+        console.log('Rename result:', result);
+      }).catch(error => {
+        console.log('Failed to rename chat:', error);
+      });
+    } else {
+      console.log('Skipping rename:', { isNewChat, hasTheme: !!currentTheme, theme: currentTheme });
     }
     
     return response || { success: true };
@@ -602,7 +631,7 @@ async function generateQueries(language) {
 
 async function handleAutomate() {
   if (currentQueries.length === 0) {
-    notifySidepanel(null, { type: 'ERROR', message: 'Нет запросов для отправки' });
+    notifySidepanel(null, { type: 'AUTOMATION_ERROR', message: 'Нет запросов для отправки' });
     return;
   }
   
@@ -613,7 +642,7 @@ async function handleAutomate() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   
   if (!tab || !tab.url || !tab.url.includes('askjune.ai')) {
-    notifySidepanel(null, { type: 'ERROR', message: 'Активная вкладка не June AI' });
+    notifySidepanel(null, { type: 'AUTOMATION_ERROR', message: 'Активная вкладка не June AI' });
     isAutomating = false;
     await saveState();
     return;
@@ -648,7 +677,7 @@ async function handleAutomate() {
           isBotResponding = botCheck && botCheck.isBotResponding;
         } catch {}
         
-        notifySidepanel(null, { type: 'STOPPED', isBotResponding });
+        notifySidepanel(null, { type: 'AUTOMATION_STOPPED', isBotResponding });
         shouldStopAutomation = false;
         isAutomating = false;
         currentAutomationTabId = null;
@@ -674,7 +703,7 @@ async function handleAutomate() {
         isBotResponding = botCheck && botCheck.isBotResponding;
       } catch {}
       
-      notifySidepanel(null, { type: 'STOPPED', isBotResponding });
+      notifySidepanel(null, { type: 'AUTOMATION_STOPPED', isBotResponding });
       shouldStopAutomation = false;
       isAutomating = false;
       currentAutomationTabId = null;
@@ -685,7 +714,7 @@ async function handleAutomate() {
   
   // Проверяем еще раз перед созданием overlay
   if (shouldStopAutomation) {
-    notifySidepanel(null, { type: 'STOPPED' });
+    notifySidepanel(null, { type: 'AUTOMATION_STOPPED' });
     shouldStopAutomation = false;
     isAutomating = false;
     currentAutomationTabId = null;
@@ -707,19 +736,21 @@ async function handleAutomate() {
   }
 
   // Отправляем запросы
+  let isFirstMessage = shouldCreateNewChat; // Флаг для переименования после первого сообщения
+  
   for (let i = 0; i < currentQueries.length; i++) {
     if (shouldStopAutomation) {
       try {
         await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
       } catch {}
-      notifySidepanel(null, { type: 'STOPPED' });
+      notifySidepanel(null, { type: 'AUTOMATION_STOPPED' });
       shouldStopAutomation = false;
       isAutomating = false;
       await saveState();
       return;
     }
     
-    notifySidepanel(null, { type: 'PROGRESS', current: i + 1, total: currentQueries.length });
+    notifySidepanel(null, { type: 'AUTOMATION_PROGRESS', current: i + 1, total: currentQueries.length });
     
     try {
       const response = await chrome.tabs.sendMessage(automationTabId, {
@@ -739,12 +770,31 @@ async function handleAutomate() {
           isBotResponding = botCheck && botCheck.isBotResponding;
         } catch {}
         
-        notifySidepanel(null, { type: 'STOPPED', isBotResponding });
+        notifySidepanel(null, { type: 'AUTOMATION_STOPPED', isBotResponding });
         shouldStopAutomation = false;
         isAutomating = false;
         currentAutomationTabId = null;
         await saveState();
         return;
+      }
+      
+      // Если это первое сообщение в новом чате, переименовываем чат под тему
+      if (isFirstMessage && response && response.success) {
+        isFirstMessage = false;
+        // Запускаем переименование асинхронно, не блокируя автоматизацию
+        (async () => {
+          try {
+            console.log('Renaming chat to theme (automation):', currentTheme);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const renameResult = await chrome.tabs.sendMessage(automationTabId, {
+              type: 'RENAME_CHAT',
+              theme: currentTheme
+            });
+            console.log('Rename result (automation):', renameResult);
+          } catch (error) {
+            console.log('Failed to rename chat (automation):', error);
+          }
+        })();
       }
       
       const delay = Math.random() * 4000 + 6000;
@@ -762,7 +812,7 @@ async function handleAutomate() {
             isBotResponding = botCheck && botCheck.isBotResponding;
           } catch {}
           
-          notifySidepanel(null, { type: 'STOPPED', isBotResponding });
+          notifySidepanel(null, { type: 'AUTOMATION_STOPPED', isBotResponding });
           shouldStopAutomation = false;
           isAutomating = false;
           currentAutomationTabId = null;
@@ -779,7 +829,7 @@ async function handleAutomate() {
     await chrome.tabs.sendMessage(automationTabId, { type: 'STOP_AUTOMATION' });
   } catch {}
   
-  notifySidepanel(null, { type: 'COMPLETE' });
+  notifySidepanel(null, { type: 'AUTOMATION_COMPLETE' });
   shouldStopAutomation = false;
   isAutomating = false;
   currentAutomationTabId = null;
